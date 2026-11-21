@@ -26,11 +26,15 @@ public partial class SettingsWindow : Window
         _viewModel.CancelRecording();
     }
 
-    private void Save_Click(object sender, RoutedEventArgs e) => _viewModel.Save();
+    private void Save_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.Save();
+        DialogResult = true;
+    }
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
-    private void SettingsWindow_PreviewKeyDown(object sender, KeyEventArgs e)
+    private void SettingsWindow_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
         if (_recordingAction is null)
         {

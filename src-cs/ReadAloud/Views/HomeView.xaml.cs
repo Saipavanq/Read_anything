@@ -1,8 +1,6 @@
-using System.Windows.Controls;
-
 namespace ReadAloud.Views;
 
-public partial class HomeView : UserControl
+public partial class HomeView : System.Windows.Controls.UserControl
 {
     public HomeView()
     {

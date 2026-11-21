@@ -4,31 +4,169 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d"
-             d:DesignHeight="500" d:DesignWidth="800">
+             d:DesignHeight="600" d:DesignWidth="760">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+    </UserControl.Resources>
+
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="28" Background="{DynamicResource BackgroundBrush}">
+        <StackPanel Margin="24,20" MaxWidth="720">
             <TextBlock Text="{Binding Greeting}"
-                       FontSize="28"
+                       FontSize="26"
                        FontWeight="SemiBold"
                        Foreground="{DynamicResource TextBrush}" />
             <TextBlock Text="{Binding Status}"
-                       Margin="0,6,0,24"
-                       FontSize="14"
-                       Foreground="{DynamicResource TextBrush}"
-                       Opacity="0.75" />
+                       Margin="0,4,0,18"
+                       FontSize="13"
+                       Foreground="{DynamicResource MutedTextBrush}" />
 
             <Border Background="{DynamicResource CardBackgroundBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1"
                     CornerRadius="{DynamicResource CornerRadius}"
-                    Padding="20">
+                    Padding="18">
                 <StackPanel>
-                    <TextBlock Text="Paste text here, or select text anywhere on your desktop..."
+                    <DockPanel Margin="0,0,0,10">
+                        <TextBlock Text="Text to read"
+                                   FontSize="15"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextBrush}" />
+                        <TextBlock DockPanel.Dock="Right"
+                                   HorizontalAlignment="Right"
+                                   Text="{Binding CharacterCount, StringFormat={}{0} characters}"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource MutedTextBrush}" />
+                    </DockPanel>
+
+                    <Grid>
+                        <TextBox x:Name="TextInputBox"
+                                 MinHeight="140"
+                                 MaxHeight="260"
+                                 Padding="12"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"
+                                 AutomationProperties.Name="Text to read aloud"
+                                 Text="{Binding TextInput, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Margin="14,12"
+                                   IsHitTestVisible="False"
+                                   Text="Paste text here, or select text anywhere on your desktop..."
+                                   Foreground="{DynamicResource PlaceholderBrush}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding TextInput.Length}" Value="0">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                        <Button Content="{Binding PrimaryButtonText}"
+                                MinWidth="110"
+                                Padding="18,9"
+                                Background="{DynamicResource AccentBrush}"
+                                Foreground="{DynamicResource AccentForegroundBrush}"
+                                AutomationProperties.Name="{Binding PrimaryButtonAccessibleName}"
+                                Command="{Binding ListenCommand}" />
+                        <Button Content="Clear"
+                                MinWidth="80"
+                                Margin="10,0,0,0"
+                                Padding="18,9"
+                                Command="{Binding ClearCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Background="{DynamicResource CardBackgroundBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="{DynamicResource CornerRadius}"
+                    Padding="18"
+                    Margin="0,14,0,0">
+                <StackPanel>
+                    <TextBlock Text="Selection capture"
+                               FontSize="15"
+                               FontWeight="SemiBold"
                                Foreground="{DynamicResource TextBrush}"
-                               Opacity="0.6"
-                               TextWrapping="Wrap" />
-                    <TextBlock Margin="0,18,0,0"
-                               Text="Read selection"
+                               Margin="0,0,0,10" />
+                    <DockPanel>
+                        <TextBlock x:Name="CaptureModeLabel"
+                                   Text="Mode"
+                                   VerticalAlignment="Center"
+                                   Width="52"
+                                   Foreground="{DynamicResource MutedTextBrush}" />
+                        <ComboBox ItemsSource="{Binding CaptureMethods}"
+                                  SelectedItem="{Binding SelectedCaptureMethod}"
+                                  AutomationProperties.LabeledBy="{Binding ElementName=CaptureModeLabel}"
+                                  MinWidth="180" />
+                    </DockPanel>
+
+                    <ItemsControl ItemsSource="{Binding HotkeySummary}" Margin="0,14,0,0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{DynamicResource SubtleBrush}"
+                                        CornerRadius="6"
+                                        Padding="8,5"
+                                        Margin="0,0,8,8">
+                                    <TextBlock Text="{Binding}"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource TextBrush}" />
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <Border Background="{DynamicResource CardBackgroundBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="{DynamicResource CornerRadius}"
+                    Padding="18"
+                    Margin="0,14,0,0"
+                    Visibility="{Binding ShowActivity, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel>
+                    <TextBlock Text="Activity"
+                               FontSize="15"
+                               FontWeight="SemiBold"
                                Foreground="{DynamicResource TextBrush}"
-                               Opacity="0.85" />
+                               Margin="0,0,0,10" />
+                    <TextBlock Text="No activity yet."
+                               Foreground="{DynamicResource MutedTextBrush}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Activity.Count}" Value="0">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <ScrollViewer MaxHeight="180" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Activity}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               TextWrapping="Wrap"
+                                               Margin="0,0,0,6" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
                 </StackPanel>
             </Border>
         </StackPanel>

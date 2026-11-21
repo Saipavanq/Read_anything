@@ -1,35 +1,34 @@
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using ReadAloud.Services;
 
 namespace ReadAloud.ViewModels;
 
-public sealed class MainViewModel : INotifyPropertyChanged
+public sealed class MainViewModel : ObservableObject
 {
     private readonly IThemeService _themes;
     private string _theme = "aurora";
+    private HomeViewModel? _home;
 
     public MainViewModel(IThemeService themes, IHotkeyRegistrar registrar)
     {
         _themes = themes;
     }
 
-    public event PropertyChangedEventHandler? PropertyChanged;
-
     public string Theme
     {
         get => _theme;
-        private set
-        {
-            _theme = value;
-            OnPropertyChanged();
-        }
+        private set => SetProperty(ref _theme, value);
     }
 
     public string Greeting { get; } = "Ready to listen?";
 
     public string Status { get; } = "Ready";
+
+    public HomeViewModel? Home
+    {
+        get => _home;
+        set => SetProperty(ref _home, value);
+    }
 
     public IReadOnlyList<string> NavigationItems { get; } =
         new[] { "Home", "Voice Library", "History", "Settings" };
@@ -48,7 +47,4 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _themes.Apply(theme);
         Theme = _themes.CurrentTheme;
     }
-
-    private void OnPropertyChanged([CallerMemberName] string? name = null)
-        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }

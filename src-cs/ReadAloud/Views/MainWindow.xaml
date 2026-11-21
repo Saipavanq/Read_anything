@@ -3,73 +3,92 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="clr-namespace:ReadAloud.Views"
         Title="Read Aloud"
-        Height="620"
-        Width="960"
-        MinHeight="480"
-        MinWidth="760"
+        Height="640"
+        Width="980"
+        MinHeight="500"
+        MinWidth="780"
         Background="{DynamicResource BackgroundBrush}">
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="220" />
+            <ColumnDefinition Width="210" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
         <Border Grid.Column="0"
-                Background="{DynamicResource CardBackgroundBrush}"
-                Padding="18">
-            <StackPanel>
-                <TextBlock Text="READ ALOUD"
-                           FontSize="14"
-                           FontWeight="Bold"
-                           Foreground="{DynamicResource AccentBrush}"
-                           Margin="8,4,0,28" />
+                Background="{DynamicResource SidebarBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,0,1,0"
+                Padding="14,18">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Bottom">
+                    <Border Height="1"
+                            Background="{DynamicResource BorderBrush}"
+                            Margin="0,0,0,12" />
+                    <TextBlock Text="Offline. Local only."
+                               FontSize="11"
+                               Foreground="{DynamicResource MutedTextBrush}" />
+                    <Button Content="Hide to tray"
+                            Margin="0,10,0,0"
+                            Padding="12,8"
+                            HorizontalContentAlignment="Left"
+                            AutomationProperties.Name="Hide Read Aloud to the system tray"
+                            Click="HideButton_Click" />
+                </StackPanel>
 
-                <Button Content="Home"
-                        Height="40"
-                        Margin="0,0,0,8"
-                        HorizontalContentAlignment="Left"
-                        Padding="14,0"
-                        Background="{DynamicResource AccentBrush}"
-                        Foreground="White" />
+                <StackPanel>
+                    <TextBlock Text="READ ALOUD"
+                               FontSize="13"
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource AccentBrush}"
+                               Margin="8,4,0,24" />
 
-                <Button Content="Voice Library"
-                        Height="40"
-                        Margin="0,0,0,8"
-                        HorizontalContentAlignment="Left"
-                        Padding="14,0"
-                        IsEnabled="False"
-                        ToolTip="Available in a later release">
-                    <Button.Style>
-                        <Style TargetType="Button">
-                            <Setter Property="Opacity" Value="0.45" />
-                        </Style>
-                    </Button.Style>
-                </Button>
+                    <Button Content="Home"
+                            Height="38"
+                            Margin="0,0,0,6"
+                            Padding="12,0"
+                            HorizontalContentAlignment="Left"
+                            Background="{DynamicResource AccentBrush}"
+                            Foreground="{DynamicResource AccentForegroundBrush}" />
 
-                <Button Content="History"
-                        Height="40"
-                        Margin="0,0,0,8"
-                        HorizontalContentAlignment="Left"
-                        Padding="14,0"
-                        IsEnabled="False"
-                        ToolTip="Available in a later release">
-                    <Button.Style>
-                        <Style TargetType="Button">
-                            <Setter Property="Opacity" Value="0.45" />
-                        </Style>
-                    </Button.Style>
-                </Button>
+                    <Button Content="Voice Library"
+                            Height="38"
+                            Margin="0,0,0,6"
+                            Padding="12,0"
+                            HorizontalContentAlignment="Left"
+                            IsEnabled="False"
+                            ToolTip="Available in a later release">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Style>
+                        </Button.Style>
+                    </Button>
 
-                <Button x:Name="SettingsButton"
-                        Content="Settings"
-                        Height="40"
-                        Margin="0,0,0,8"
-                        HorizontalContentAlignment="Left"
-                        Padding="14,0"
-                        Click="SettingsButton_Click" />
-            </StackPanel>
+                    <Button Content="History"
+                            Height="38"
+                            Margin="0,0,0,6"
+                            Padding="12,0"
+                            HorizontalContentAlignment="Left"
+                            IsEnabled="False"
+                            ToolTip="Available in a later release">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Style>
+                        </Button.Style>
+                    </Button>
+
+                    <Button x:Name="SettingsButton"
+                            Content="Settings"
+                            Height="38"
+                            Margin="0,0,0,6"
+                            Padding="12,0"
+                            HorizontalContentAlignment="Left"
+                            Click="SettingsButton_Click" />
+                </StackPanel>
+            </DockPanel>
         </Border>
 
-        <views:HomeView Grid.Column="1" />
+        <views:HomeView Grid.Column="1" DataContext="{Binding Home}" />
     </Grid>
 </Window>
