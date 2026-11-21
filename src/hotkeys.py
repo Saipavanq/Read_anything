@@ -48,6 +48,47 @@ def to_pynput(combo: str) -> str:
     return "+".join(out)
 
 
+ACTION_CONFIG_KEYS = {
+    "read": "hotkey_read",
+    "voice": "hotkey_voice",
+    "stop": "hotkey_stop",
+}
+
+
+def _is_well_formed(combo: str) -> bool:
+    """A hotkey needs exactly one non-modifier key and no empty segments."""
+    parts = [p.strip().lower() for p in (combo or "").split("+")]
+    if not parts or any(not part for part in parts):
+        return False
+    keys = [part for part in parts if part not in MODIFIERS]
+    return len(keys) == 1
+
+
+def validate_hotkeys(config: dict) -> tuple[dict[str, str], list[str]]:
+    """Return usable {action: pynput binding} bindings and human-readable problems.
+
+    Invalid or duplicate combinations are dropped; the first action wins in
+    read -> voice -> stop priority so the primary read hotkey is never lost.
+    """
+    bindings: dict[str, str] = {}
+    problems: list[str] = []
+    seen: dict[str, str] = {}
+    for action, config_key in ACTION_CONFIG_KEYS.items():
+        combo = str(config.get(config_key, "") or "")
+        if not _is_well_formed(combo):
+            problems.append(f"{config_key}: malformed hotkey {combo!r}")
+            continue
+        binding = to_pynput(combo)
+        if binding in seen:
+            problems.append(
+                f"{config_key}: duplicate hotkey {combo!r} (same as {seen[binding]})"
+            )
+            continue
+        seen[binding] = config_key
+        bindings[action] = binding
+    return bindings, problems
+
+
 def describe(combo: str) -> str:
     """Return a display-friendly version of a hotkey string."""
     import re

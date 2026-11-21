@@ -16,7 +16,7 @@ from PIL import Image, ImageDraw
 from pynput import keyboard
 
 from config import load_config, save_config
-from hotkeys import describe, to_pynput
+from hotkeys import describe, validate_hotkeys
 from llm import LocalLLM
 from logging_setup import setup_logging
 from selection import capture_selected_text
@@ -51,11 +51,18 @@ class HotkeyManager:
         self.listener = None
 
     def start(self) -> None:
+        bindings, problems = validate_hotkeys(self.config)
+        if problems:
+            log.warning("Hotkey problems: %s", "; ".join(problems))
+            notify("Hotkeys", "; ".join(problems))
         mapping = {
-            to_pynput(self.config["hotkey_read"]): self.actions["read"],
-            to_pynput(self.config["hotkey_voice"]): self.actions["voice"],
-            to_pynput(self.config["hotkey_stop"]): self.actions["stop"],
+            binding: self.actions[action]
+            for action, binding in bindings.items()
+            if action in self.actions
         }
+        if not mapping:
+            notify("Hotkeys", "No valid hotkeys configured; use the window buttons.")
+            return
         try:
             self.listener = keyboard.GlobalHotKeys(mapping)
             self.listener.start()
