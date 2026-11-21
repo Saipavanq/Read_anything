@@ -80,7 +80,7 @@ Every read request is tagged with a short `request_id` in `logs/app.log`, for ex
 2026-11-21 18:51:58,010 INFO     [read-worker] request_id=9f3a2c10 completed in 887ms chars=412 mode=verbatim
 ```
 
-Use the ID to follow one request through capture, LLM processing and speech, including failures. The activity panel in the window shows the same messages with timestamps.
+Use the ID to correlate the log lines belonging to one request, including capture, LLM processing, speech and failures. The activity panel shows user-facing status messages with timestamps, but does not include request IDs.
 
 ## Files
 

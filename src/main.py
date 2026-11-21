@@ -79,6 +79,23 @@ class Tooltip:
             self.window = None
 
 
+def make_combobox(parent, textvariable, values, width, on_select):
+    """Create a readonly ttk Combobox using its supported selection event.
+
+    ttk.Combobox has no ``command`` option; selection changes are delivered
+    through the ``<<ComboboxSelected>>`` virtual event instead.
+    """
+    combo = ttk.Combobox(
+        parent,
+        textvariable=textvariable,
+        values=values,
+        state="readonly",
+        width=width,
+    )
+    combo.bind("<<ComboboxSelected>>", on_select)
+    return combo
+
+
 def snapshot_settings(vars_dict: dict, config: dict) -> dict:
     """Read Tk variables on the main thread into a plain, normalised dict.
 
@@ -230,22 +247,20 @@ class App:
         controls = ttk.LabelFrame(self.root, text="Speech", padding=10)
         controls.pack(fill=tk.X, pady=10)
         ttk.Label(controls, text="Engine:").grid(row=0, column=0, sticky=tk.W)
-        ttk.Combobox(
+        make_combobox(
             controls,
-            textvariable=self.engine_var,
-            values=ENGINES,
-            state="readonly",
-            width=14,
-            command=self._on_engine,
+            self.engine_var,
+            ENGINES,
+            14,
+            self._on_engine,
         ).grid(row=0, column=1, sticky=tk.W, padx=(8, 20))
         ttk.Label(controls, text="Reading mode:").grid(row=0, column=2, sticky=tk.W)
-        ttk.Combobox(
+        make_combobox(
             controls,
-            textvariable=self.mode_var,
-            values=MODES,
-            state="readonly",
-            width=14,
-            command=self._on_mode,
+            self.mode_var,
+            MODES,
+            14,
+            self._on_mode,
         ).grid(row=0, column=3, sticky=tk.W, padx=(8, 0))
 
         ttk.Label(controls, text="Volume:").grid(row=1, column=0, sticky=tk.W, pady=(10, 0))
@@ -302,6 +317,20 @@ class App:
         save_config(self.config)
         log.info("Setting %s changed to %r", key, value)
 
+    def _apply_engine(self, engine: str) -> None:
+        """Apply a speech-engine change received on the main thread."""
+        self.engine_var.set(engine)
+        self.apply_setting("tts_engine", engine)
+        self.refresh_controls()
+        notify("Read Aloud", f"Speech engine: {engine}")
+
+    def _apply_mode(self, mode: str) -> None:
+        """Apply a reading-mode change received on the main thread."""
+        self.mode_var.set(mode)
+        self.apply_setting("llm_mode", mode)
+        self.refresh_controls()
+        notify("Read Aloud", f"Reading mode: {mode}")
+
     def _append_log(self, title: str, message: str) -> None:
         self.log_text.configure(state=tk.NORMAL)
         self.log_text.insert(tk.END, f"{datetime.now():%H:%M:%S} {title}: {message}\n")
@@ -319,18 +348,36 @@ class App:
                 break
             if title == "__refresh__":
                 self.refresh_controls()
-            elif title == "__show__":
+                continue
+            if title == "__show__":
                 self.root.deiconify()
                 self.root.lift()
-            elif title == "__settings__":
+                continue
+            if title == "__settings__":
                 open_settings(self.config, message, self.root)
-            elif title == "__quit__":
+                continue
+            if title == "__quit__":
                 self.shutdown()
                 self.root.destroy()
                 return
-            self._append_log(title, message)
-            self.status_var.set(message[:70])
-            lowered = message.lower()
+            if title == "__read__":
+                snapshot = snapshot_settings(self.control_vars, self.config)
+                self.tts.stop()
+                self.requests_queue.put((message, snapshot))
+                continue
+            if title == "__engine__":
+                self._apply_engine(message)
+                continue
+            if title == "__mode__":
+                self._apply_mode(message)
+                continue
+            if isinstance(title, str) and title.startswith("__"):
+                log.debug("Ignoring internal event %s", title)
+                continue
+            text = str(message)
+            self._append_log(str(title), text)
+            self.status_var.set(text[:70])
+            lowered = text.lower()
             if lowered.startswith(("error", "no text", "could not")):
                 colour = "#c0392b"
             elif lowered.startswith("reading"):
@@ -349,10 +396,8 @@ class App:
 
     # ---------- Actions ----------
     def request_read(self, mode: str | None = None, *_args) -> None:
-        # Tk variables must only be read on the main thread.
-        snapshot = snapshot_settings(self.control_vars, self.config)
-        self.tts.stop()
-        self.requests_queue.put((mode, snapshot))
+        """Queue a read request; hotkeys and tray callbacks may call this."""
+        ui_queue.put(("__read__", mode))
 
     def stop_speaking(self, *_args) -> None:
         self.tts.stop()
@@ -506,16 +551,12 @@ class App:
         notify("Read Aloud", "Hidden to tray. Use the tray icon to restore.")
 
     def set_engine(self, engine: str) -> None:
-        self.engine_var.set(engine)
-        self.apply_setting("tts_engine", engine)
-        ui_queue.put(("__refresh__", ""))
-        notify("Read Aloud", f"Speech engine: {engine}")
+        # The tray icon runs on its own thread; Tk may only be touched by poll_events.
+        ui_queue.put(("__engine__", engine))
 
     def set_mode(self, mode: str) -> None:
-        self.mode_var.set(mode)
-        self.apply_setting("llm_mode", mode)
-        ui_queue.put(("__refresh__", ""))
-        notify("Read Aloud", f"Reading mode: {mode}")
+        # The tray icon runs on its own thread; Tk may only be touched by poll_events.
+        ui_queue.put(("__mode__", mode))
 
     # ---------- Settings / lifecycle ----------
     def open_settings(self, *_args) -> None:

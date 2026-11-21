@@ -194,7 +194,7 @@ The app was also packaged into a standalone Windows executable at `dist\ReadAlou
 
 ---
 
-**Status:** approved — implementation is underway.
+**Status:** approved — implementation complete; the reliability pass was verified with 53 unit tests and a packaged-exe smoke test.
 
 ---
 
