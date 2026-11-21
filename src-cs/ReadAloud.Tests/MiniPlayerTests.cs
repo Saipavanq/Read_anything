@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using ReadAloud.Models;
 using ReadAloud.Services;
 using ReadAloud.ViewModels;
@@ -164,6 +165,39 @@ public sealed class MiniPlayerTests
         Assert.Equal(1, expanded);
         Assert.Equal(1, h.View.HideCalls);
         Assert.False(h.Service.IsVisible);
+    }
+
+    [Fact]
+    public void ProgressBarBindings_AreOneWay()
+    {
+        var expected = "Value=\"{Binding ProgressPercent, Mode=OneWay}\"";
+
+        foreach (var relativePath in new[]
+        {
+            "src-cs/ReadAloud/Views/HomeView.xaml",
+            "src-cs/ReadAloud/Views/MiniPlayerWindow.xaml"
+        })
+        {
+            var xaml = File.ReadAllText(ResolveRepositoryFile(relativePath));
+            Assert.Contains(expected, xaml);
+        }
+    }
+
+    private static string ResolveRepositoryFile(string relativePath)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            var candidate = Path.Combine(directory.FullName, relativePath);
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new FileNotFoundException($"Could not locate {relativePath} from {AppContext.BaseDirectory}.");
     }
 
     private static PlaybackState State(PlaybackStatus status)

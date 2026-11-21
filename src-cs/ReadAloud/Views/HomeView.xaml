@@ -157,7 +157,7 @@
                     <ProgressBar Height="4"
                                  Margin="0,12,0,6"
                                  Maximum="100"
-                                 Value="{Binding ProgressPercent}"
+                                 Value="{Binding ProgressPercent, Mode=OneWay}"
                                  Foreground="{DynamicResource AccentBrush}"
                                  Background="{DynamicResource SubtleBrush}"
                                  AutomationProperties.Name="Playback progress" />
