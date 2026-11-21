@@ -213,6 +213,10 @@ Unknown Python keys are preserved but ignored. Values are normalised on load: th
 
 `playback_speed` maps to SAPI `Rate` with `round(10 * log2(speed))`, clamped to -10–10. This gives 0.5x → -10, 1.0x → 0, 2.0x → 10, and caps above 2.0x at 10 because SAPI cannot exceed its native range.
 
+Phase 1 uses `sapi_rate` directly. From Phase 2 onward, `playback_speed` is the single authoritative speed value: if it is absent but `sapi_rate` exists, `ConfigService` derives `playback_speed = clamp(2^(sapi_rate / 10), 0.5, 3.0)` once. `sapi_rate` remains in config for backward compatibility but is no longer edited by Settings.
+
+`offline_voice` stores the SAPI voice `Description` string, matching what the Python app saved through COM `GetDescription()`. Voice Library cards, Settings dropdowns, and migration all use `VoiceInfo.Description` as the identity, compared case-insensitively with fallback to `VoiceInfo.Name`, then the system default.
+
 ### Theme system
 
 `App.xaml` merges `Themes/Aurora.xaml` by default. `AppConfig.Theme` selects the dictionary. Settings contains a labelled two-state switch:
@@ -297,7 +301,7 @@ The activity panel shows the method and diagnostic, replacing the silent ~1.4 s 
 
 - Play/Pause use `SpeechSynthesizer.Pause()` and `Resume()` where supported.
 - Stop calls `SpeakAsyncCancelAll()` and clears current playback state.
-- Skip forward/backward moves by sentence and restarts synthesis at the target sentence. This is explicitly sentence-level, not word-level.
+- Skip forward/backward moves by sentence and restarts synthesis at the target sentence, then continues through the remaining sentences to the end. It does not speak only the target sentence. This is explicitly sentence-level, not word-level.
 - Current-sentence highlight is driven by `SpeakProgress` events when available; otherwise the whole current sentence is highlighted.
 - Estimated remaining time is based on word count and current speed; it is an estimate, not a guarantee.
 
@@ -317,7 +321,7 @@ Voice cards show:
 
 - Name from `SpeechSynthesizer.GetInstalledVoices()`.
 - Language from `VoiceInfo.Culture`.
-- Gender presentation when available, otherwise `Not specified`.
+- Gender presentation from `VoiceInfo.Gender`, or `Not specified` when the voice does not report one.
 - Preview button that speaks a short sample using the current speed/volume.
 - Quality label `System` for all SAPI voices. `Natural` and `AI` remain deferred until non-SAPI voices are added.
 - Search box and language filter.
@@ -326,7 +330,9 @@ Voice cards show:
 
 `HistoryService` stores local-only entries in `%APPDATA%\Read Aloud\history.json` when `history_enabled` is true.
 
-Each entry contains text, timestamp, duration, voice, speed, and capture method. The History view shows recently read text with Replay and Delete, plus Delete all. Retention uses `history_retention_days`. History is off by default to preserve privacy; enabling it is an explicit user choice.
+An entry is created when a read is accepted for speech, including manual-input reads, captured reads, and Replay. It stores the exact `max_chars`-truncated text actually spoken, not the original untruncated selection. `duration` is the measured elapsed speech time from speech start to natural completion, Stop, interruption, or skip; it is `0` if speech never started. Each entry has a status of `completed`, `stopped`, or `interrupted`. Replay creates a new entry with source `replay` rather than updating the original.
+
+Each entry contains text, timestamp, duration, status, voice, speed, capture method, and source. The History view shows recently read text with Replay and Delete, plus Delete all. Retention uses `history_retention_days`. History is off by default to preserve privacy; enabling it is an explicit user choice.
 
 ### Settings
 
@@ -370,6 +376,10 @@ These are implementation decisions made by the author from prior user choices; t
 8. **Auto-read is off by default** because automatic reading can be noisy and was not part of the original trigger model.
 9. **SAPI voices are labelled System.** Natural/AI labels wait for real non-SAPI voices.
 10. **Start with Windows and Minimize to tray are Phase 4 settings**, with X still exiting.
+11. **Skip continues to the end.** Skipping selects a target sentence and then speaks the remaining text; it does not speak only that sentence.
+12. **History entries are written when a read is accepted for speech**, store the spoken/truncated text, and record measured duration with a `completed`/`stopped`/`interrupted` status. Replay creates a new entry.
+13. **`playback_speed` becomes authoritative in Phase 2.** `sapi_rate` is migrated once into it and kept only for compatibility.
+14. **`offline_voice` stores the SAPI `Description`.** This matches the Python COM value and is used consistently across migration, Settings, and Voice Library.
 
 ## Verification plan
 
@@ -387,14 +397,15 @@ These are implementation decisions made by the author from prior user choices; t
 
 ### Phase 2
 
-- `PlaybackTests`: Play/Pause/Stop transitions; Skip moves by sentence; speed maps to SAPI rate; progress and remaining time update; current-sentence index is published.
+- `PlaybackTests`: Play/Pause/Stop transitions; Skip moves by sentence and continues to the end; speed maps to SAPI rate; progress and remaining time update; current-sentence index is published.
+- `ConfigTests`: legacy `sapi_rate` derives `playback_speed` once; `playback_speed` wins when both are present; migrated `offline_voice` matches by `Description` with `Name` fallback.
 - `MiniPlayerTests`: mini player shows for selection reads; Auto-hide hides after completion; always-on-top setting maps to window topmost; Close hides only the mini player.
 - Manual smoke: read a multi-sentence selection, pause/resume, skip forward/back, change speed, expand mini player, stop.
 
 ### Phase 3
 
-- `VoiceLibraryTests`: installed voices map to cards; language filter works; preview uses selected voice; missing culture shows `Not specified`; quality label is `System`.
-- `HistoryTests`: history disabled by default; enabled mode stores entries; replay, delete, delete-all, and retention work; corrupted history file falls back to empty.
+- `VoiceLibraryTests`: installed voices map to cards; language filter works; preview uses selected voice; gender comes from `VoiceInfo.Gender`; missing culture/gender shows `Not specified`; quality label is `System`; `offline_voice` matches by `Description`.
+- `HistoryTests`: history disabled by default; enabled mode stores entries when a read is accepted; stored text is truncated; status/duration are recorded for completed, stopped, and interrupted reads; Replay creates a new entry; delete, delete-all, and retention work; corrupted history file falls back to empty.
 - Manual smoke: enable history, read text, replay from History, delete an entry, disable history.
 
 ### Phase 4
