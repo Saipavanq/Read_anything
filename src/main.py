@@ -15,7 +15,7 @@ import pystray
 from PIL import Image, ImageDraw
 from pynput import keyboard
 
-from config import load_config, save_config
+from config import load_config, normalise_config, save_config
 from hotkeys import describe, validate_hotkeys
 from llm import LocalLLM
 from logging_setup import setup_logging
@@ -42,6 +42,25 @@ def notify(title: str, message: str) -> None:
             app.icon.notify(message, title)
         except Exception as exc:
             log.debug("Tray notification failed: %s", exc)
+
+
+def snapshot_settings(vars_dict: dict, config: dict) -> dict:
+    """Read Tk variables on the main thread into a plain, normalised dict.
+
+    Only str/int/float/bool/None values cross into the worker thread. A
+    variable that cannot be read (or yields an unsupported object) is ignored
+    so the worker always receives a safe configuration snapshot.
+    """
+    snapshot = dict(config)
+    for key, var in vars_dict.items():
+        try:
+            value = var.get()
+        except Exception as exc:
+            log.debug("Could not snapshot %s: %s", key, exc)
+            continue
+        if isinstance(value, (str, int, float, bool, type(None))):
+            snapshot[key] = value
+    return normalise_config(snapshot)
 
 
 class HotkeyManager:
@@ -104,6 +123,11 @@ class App:
         self.mode_var = tk.StringVar(value=self.config.get("llm_mode", "verbatim"))
         self.volume_var = tk.IntVar(value=int(self.config.get("volume", 100)))
         self.status_var = tk.StringVar(value="Ready")
+        self.control_vars = {
+            "tts_engine": self.engine_var,
+            "llm_mode": self.mode_var,
+            "volume": self.volume_var,
+        }
 
         self.hotkeys = HotkeyManager(
             self.config,
@@ -163,6 +187,7 @@ class App:
             values=ENGINES,
             state="readonly",
             width=14,
+            command=self._on_engine,
         ).grid(row=0, column=1, sticky=tk.W, padx=(8, 20))
         ttk.Label(controls, text="Reading mode:").grid(row=0, column=2, sticky=tk.W)
         ttk.Combobox(
@@ -171,6 +196,7 @@ class App:
             values=MODES,
             state="readonly",
             width=14,
+            command=self._on_mode,
         ).grid(row=0, column=3, sticky=tk.W, padx=(8, 0))
 
         ttk.Label(controls, text="Volume:").grid(row=1, column=0, sticky=tk.W, pady=(10, 0))
@@ -208,8 +234,24 @@ class App:
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         self._append_log("Read Aloud", "Window ready. Ready to read selected text.")
 
-    def _on_volume(self, _value) -> None:
-        self.volume_label.configure(text=str(int(self.volume_var.get())) + "%")
+    def _on_volume(self, value) -> None:
+        volume = int(float(value))
+        self.volume_label.configure(text=f"{volume}%")
+        self.apply_setting("volume", volume)
+
+    def _on_engine(self, _value=None) -> None:
+        self.apply_setting("tts_engine", self.engine_var.get())
+
+    def _on_mode(self, _value=None) -> None:
+        self.apply_setting("llm_mode", self.mode_var.get())
+
+    def apply_setting(self, key: str, value) -> None:
+        """Persist a single setting changed on the main thread."""
+        if self.config.get(key) == value:
+            return
+        self.config[key] = value
+        save_config(self.config)
+        log.info("Setting %s changed to %r", key, value)
 
     def _append_log(self, title: str, message: str) -> None:
         self.log_text.configure(state=tk.NORMAL)
@@ -231,6 +273,8 @@ class App:
             elif title == "__show__":
                 self.root.deiconify()
                 self.root.lift()
+            elif title == "__settings__":
+                open_settings(self.config, message, self.root)
             elif title == "__quit__":
                 self.shutdown()
                 self.root.destroy()
@@ -247,8 +291,10 @@ class App:
 
     # ---------- Actions ----------
     def request_read(self, mode: str | None = None, *_args) -> None:
+        # Tk variables must only be read on the main thread.
+        snapshot = snapshot_settings(self.control_vars, self.config)
         self.tts.stop()
-        self.requests_queue.put(mode)
+        self.requests_queue.put((mode, snapshot))
 
     def stop_speaking(self, *_args) -> None:
         self.tts.stop()
@@ -272,25 +318,21 @@ class App:
 
         threading.Thread(target=run, daemon=True, name="voice-command").start()
 
-    def handle_request(self, mode: str | None) -> None:
+    def handle_request(self, mode: str | None, snapshot: dict) -> None:
         try:
-            self.config["tts_engine"] = self.engine_var.get()
-            self.config["llm_mode"] = self.mode_var.get()
-            self.config["volume"] = int(self.volume_var.get())
-
-            text = capture_selected_text(self.config.get("capture_method"))
+            text = capture_selected_text(snapshot.get("capture_method"))
             if not text:
                 notify("Read Aloud", "No text selected. Highlight text, then press the hotkey.")
                 return
 
-            limit = int(self.config.get("max_chars", 4000))
+            limit = int(snapshot.get("max_chars", 4000))
             if len(text) > limit:
                 text = text[:limit]
                 notify("Read Aloud", f"Selection truncated to {limit} characters.")
 
-            effective_mode = mode or self.config.get("llm_mode", "verbatim")
+            effective_mode = mode or snapshot.get("llm_mode", "verbatim")
             if effective_mode != "verbatim":
-                if not self.config.get("llm_enabled"):
+                if not snapshot.get("llm_enabled"):
                     notify("Read Aloud", "Local LLM is disabled; reading verbatim.")
                     effective_mode = "verbatim"
                 else:
@@ -306,15 +348,19 @@ class App:
 
     def worker(self) -> None:
         while True:
-            mode = self.requests_queue.get()
-            if mode is _STOP:
+            item = self.requests_queue.get()
+            if item is _STOP:
                 break
+            mode, snapshot = item
             while True:
                 try:
-                    self.requests_queue.get_nowait()
+                    extra = self.requests_queue.get_nowait()
                 except queue.Empty:
                     break
-            self.handle_request(mode)
+                if extra is _STOP:
+                    self.requests_queue.put(_STOP)
+                    break
+            self.handle_request(mode, snapshot)
 
     # ---------- Tray ----------
     def make_icon_image(self) -> Image.Image:
@@ -391,15 +437,13 @@ class App:
 
     def set_engine(self, engine: str) -> None:
         self.engine_var.set(engine)
-        self.config["tts_engine"] = engine
-        save_config(self.config)
+        self.apply_setting("tts_engine", engine)
         ui_queue.put(("__refresh__", ""))
         notify("Read Aloud", f"Speech engine: {engine}")
 
     def set_mode(self, mode: str) -> None:
         self.mode_var.set(mode)
-        self.config["llm_mode"] = mode
-        save_config(self.config)
+        self.apply_setting("llm_mode", mode)
         ui_queue.put(("__refresh__", ""))
         notify("Read Aloud", f"Reading mode: {mode}")
 
@@ -410,12 +454,20 @@ class App:
             ui_queue.put(("__refresh__", ""))
             notify("Read Aloud", "Settings saved; hotkeys refreshed.")
 
-        open_settings(self.config, saved)
+        # Tk widgets may only be created from the main thread.
+        ui_queue.put(("__settings__", saved))
 
     def open_log(self) -> None:
         from config import LOG_DIR
 
-        os.startfile(str(LOG_DIR / "app.log"))
+        path = LOG_DIR / "app.log"
+        try:
+            LOG_DIR.mkdir(parents=True, exist_ok=True)
+            path.touch(exist_ok=True)
+            os.startfile(str(path))
+        except OSError as exc:
+            log.warning("Could not open log file: %s", exc)
+            notify("Read Aloud", f"Could not open log: {exc}")
 
     def _start_workers(self) -> None:
         threading.Thread(target=self.worker, daemon=True, name="read-worker").start()

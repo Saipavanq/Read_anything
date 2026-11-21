@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-import threading
 import tkinter as tk
 from tkinter import messagebox, ttk
 
@@ -15,12 +14,18 @@ log = logging.getLogger("read_aloud")
 MODES = ["verbatim", "summarize", "simplify", "translate", "custom"]
 
 
-def open_settings(config: dict, on_save) -> None:
-    threading.Thread(target=_show, args=(config, on_save), daemon=True).start()
+def open_settings(config: dict, on_save, parent=None) -> None:
+    """Open the settings dialog. Must be called from the Tk main thread."""
+    _show(config, on_save, parent)
 
 
-def _show(config: dict, on_save) -> None:
-    root = tk.Tk()
+def _show(config: dict, on_save, parent=None) -> None:
+    if parent is None:
+        root = tk.Tk()
+    else:
+        root = tk.Toplevel(parent)
+        root.transient(parent)
+        root.grab_set()
     root.title("Read Aloud — Settings")
     root.geometry("620x720")
     root.resizable(False, False)
@@ -137,4 +142,5 @@ def _show(config: dict, on_save) -> None:
     ttk.Button(buttons, text="Save", command=save).pack(side=tk.RIGHT, padx=4)
     ttk.Button(buttons, text="Cancel", command=root.destroy).pack(side=tk.RIGHT)
 
-    root.mainloop()
+    if parent is None:
+        root.mainloop()
