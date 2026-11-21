@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
+using ReadAloud.Services;
 using ReadAloud.ViewModels;
 
 namespace ReadAloud.Views;
@@ -50,34 +51,14 @@ public partial class SettingsWindow : Window
             return;
         }
 
-        if (IsModifierKey(e.Key))
+        var pressed = Keyboard.Modifiers;
+        if (!HotkeyService.TryNormalizeKeyEvent(e.Key, e.SystemKey, pressed, out var modifiers, out var key)
+            || IsModifierKey(key))
         {
             return;
         }
 
-        var modifiers = ModifierKeys.None;
-        var pressed = Keyboard.Modifiers;
-        if (pressed.HasFlag(ModifierKeys.Control))
-        {
-            modifiers |= ModifierKeys.Control;
-        }
-
-        if (pressed.HasFlag(ModifierKeys.Shift))
-        {
-            modifiers |= ModifierKeys.Shift;
-        }
-
-        if (pressed.HasFlag(ModifierKeys.Alt))
-        {
-            modifiers |= ModifierKeys.Alt;
-        }
-
-        if (pressed.HasFlag(ModifierKeys.Windows))
-        {
-            modifiers |= ModifierKeys.Windows;
-        }
-
-        _viewModel.FinishRecording(_recordingAction, modifiers, e.Key);
+        _viewModel.FinishRecording(_recordingAction, modifiers, key);
         _recordingAction = null;
     }
 

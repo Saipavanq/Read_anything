@@ -45,8 +45,9 @@ public sealed class ReadCoordinatorTests
     {
         var h = new Harness();
 
-        await h.Coordinator.RequestReadAsync("manual text");
+        var started = await h.Coordinator.RequestReadAsync("manual text");
 
+        Assert.True(started);
         Assert.Equal(0, h.Clipboard.SnapshotCalls);
         Assert.Equal(0, h.Keyboard.SendCalls);
         Assert.Equal("manual text", Assert.Single(h.Speech.Spoken));
@@ -58,8 +59,9 @@ public sealed class ReadCoordinatorTests
         var h = new Harness();
         h.Keyboard.OnCtrlC = () => { };
 
-        await h.Coordinator.RequestReadAsync();
+        var started = await h.Coordinator.RequestReadAsync();
 
+        Assert.False(started);
         Assert.Empty(h.Speech.Spoken);
         Assert.Contains(h.Log.Entries, entry => entry.Contains("clipboard unchanged; UIA no selection", StringComparison.Ordinal));
     }

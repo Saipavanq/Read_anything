@@ -38,7 +38,7 @@ public sealed class ReadCoordinator
         }
     }
 
-    public async Task RequestReadAsync(
+    public async Task<bool> RequestReadAsync(
         string? manualText = null,
         string? source = null,
         CaptureMethod? captureMethod = null)
@@ -72,14 +72,14 @@ public sealed class ReadCoordinator
 
                 if (string.IsNullOrWhiteSpace(text))
                 {
-                    return;
+                    return false;
                 }
             }
 
             if (!IsCurrent(generation))
             {
                 _log.Add($"Read {generation} discarded: superseded.");
-                return;
+                return false;
             }
 
             if (text.Length > config.MaxChars)
@@ -94,6 +94,7 @@ public sealed class ReadCoordinator
                 VoiceOptions.FromConfig(config),
                 readSource,
                 captureMethod ?? config.CaptureMethod);
+            return true;
         }
         finally
         {

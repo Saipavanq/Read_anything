@@ -1,6 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Interop;
 using ReadAloud.Services;
 using ReadAloud.ViewModels;
 using ReadAloud.Views;
@@ -15,6 +19,7 @@ public partial class App : System.Windows.Application
     private ActivityLog? _log;
     private HistoryService? _history;
     private HomeViewModel? _home;
+    private SelectionReadFlow? _selectionReadFlow;
     private PlaybackService? _playback;
     private MiniPlayerWindow? _miniWindow;
     private MiniPlayerService? _miniPlayer;
@@ -77,6 +82,9 @@ public partial class App : System.Windows.Application
         _registrar.HotkeyPressed += OnHotkeyPressed;
 
         _home = new HomeViewModel(coordinator, _log, _hotkeys, () => _config!.Load(), _config.Save);
+        _selectionReadFlow = new SelectionReadFlow(
+            () => _home!.RequestReadSelectionAsync(),
+            () => _miniPlayer?.ShowForSelectionRead());
         _main = new MainViewModel(_themes, _registrar)
         {
             Home = _home,
@@ -100,8 +108,18 @@ public partial class App : System.Windows.Application
         MainWindow = _window;
         _window.Show();
 
+        var foregroundPolicy = new OwnWindowForegroundPolicy(
+            NativeMethods.GetForegroundWindow,
+            () => Current!.Windows
+                .Cast<Window>()
+                .Where(window => window.IsVisible)
+                .Select(window => new WindowInteropHelper(window).Handle)
+                .Where(handle => handle != IntPtr.Zero)
+                .ToArray());
         _autoRead = new AutoReadService(
-            new MouseUpAutoReadTrigger(IsOwnWindowForeground),
+            new MouseUpAutoReadTrigger(
+                foregroundPolicy.IsOwnWindowForeground,
+                diagnostic: message => _log!.Add(message)),
             coordinator,
             () => _config!.Load(),
             action => Dispatcher.Invoke(action));
@@ -136,18 +154,15 @@ public partial class App : System.Windows.Application
 
     private async Task ReadSelectionAsync()
     {
-        if (_home is null || _log is null)
+        var flow = _selectionReadFlow;
+        if (flow is null || _log is null)
         {
             return;
         }
 
         try
         {
-            await await Dispatcher.InvokeAsync(async () =>
-            {
-                _miniPlayer?.ShowForSelectionRead();
-                await _home.RequestReadSelectionAsync();
-            });
+            await await Dispatcher.InvokeAsync(() => flow.RunAsync());
         }
         catch (Exception ex)
         {
@@ -215,23 +230,10 @@ public partial class App : System.Windows.Application
         }
     }
 
-    private static bool IsOwnWindowForeground()
+    private static class NativeMethods
     {
-        var app = Current;
-        if (app is null)
-        {
-            return false;
-        }
-
-        foreach (Window window in app.Windows)
-        {
-            if (window.IsActive)
-            {
-                return true;
-            }
-        }
-
-        return false;
+        [DllImport("user32.dll")]
+        internal static extern IntPtr GetForegroundWindow();
     }
 
     private void ShowMainWindow()

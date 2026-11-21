@@ -10,6 +10,49 @@ namespace ReadAloud.Tests;
 public sealed class HotkeyTests
 {
     [Fact]
+    public void NormalizeSystemKey_UsesSystemKeyAndAlt()
+    {
+        var normalized = HotkeyService.TryNormalizeKeyEvent(
+            Key.System,
+            Key.V,
+            ModifierKeys.Control | ModifierKeys.Alt,
+            out var modifiers,
+            out var key);
+
+        Assert.True(normalized);
+        Assert.Equal(ModifierKeys.Control | ModifierKeys.Alt, modifiers);
+        Assert.Equal(Key.V, key);
+    }
+
+    [Fact]
+    public void NormalizeSystemKey_AltAloneIsModifierOnly()
+    {
+        var normalized = HotkeyService.TryNormalizeKeyEvent(
+            Key.System,
+            Key.None,
+            ModifierKeys.Alt,
+            out _,
+            out _);
+
+        Assert.False(normalized);
+    }
+
+    [Fact]
+    public void NormalizeOrdinaryKey_IsUnchanged()
+    {
+        var normalized = HotkeyService.TryNormalizeKeyEvent(
+            Key.T,
+            Key.None,
+            ModifierKeys.Control | ModifierKeys.Shift,
+            out var modifiers,
+            out var key);
+
+        Assert.True(normalized);
+        Assert.Equal(ModifierKeys.Control | ModifierKeys.Shift, modifiers);
+        Assert.Equal(Key.T, key);
+    }
+
+    [Fact]
     public void Format_ProducesCtrlAltR()
     {
         var service = new HotkeyService(new FakeHotkeyRegistrar());

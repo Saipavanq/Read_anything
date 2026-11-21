@@ -129,10 +129,10 @@ public sealed class HomeViewModel : ObservableObject
         };
     }
 
-    public Task RequestListenAsync()
+    public Task<bool> RequestListenAsync()
         => RunReadAsync(string.IsNullOrWhiteSpace(_textInput) ? null : _textInput);
 
-    public Task RequestReadSelectionAsync() => RunReadAsync(null);
+    public Task<bool> RequestReadSelectionAsync() => RunReadAsync(null);
 
     public void Stop()
     {
@@ -141,19 +141,20 @@ public sealed class HomeViewModel : ObservableObject
         Status = "Ready";
     }
 
-    private async Task RunReadAsync(string? manualText)
+    private async Task<bool> RunReadAsync(string? manualText)
     {
         if (IsListening)
         {
-            return;
+            return false;
         }
 
         IsListening = true;
         Status = "Reading…";
+        var started = false;
 
         try
         {
-            await _coordinator.RequestReadAsync(manualText);
+            started = await _coordinator.RequestReadAsync(manualText);
         }
         catch (Exception ex)
         {
@@ -164,5 +165,7 @@ public sealed class HomeViewModel : ObservableObject
             IsListening = false;
             Status = "Ready";
         }
+
+        return started;
     }
 }

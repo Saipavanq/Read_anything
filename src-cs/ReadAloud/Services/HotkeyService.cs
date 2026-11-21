@@ -44,6 +44,31 @@ public sealed class HotkeyService
         return string.Join("+", parts);
     }
 
+    public static bool TryNormalizeKeyEvent(
+        Key key,
+        Key systemKey,
+        ModifierKeys modifiers,
+        out ModifierKeys normalizedModifiers,
+        out Key normalizedKey)
+    {
+        normalizedModifiers = modifiers;
+        normalizedKey = key;
+
+        if (key != Key.System)
+        {
+            return true;
+        }
+
+        if (systemKey == Key.None)
+        {
+            return false;
+        }
+
+        normalizedModifiers = modifiers | ModifierKeys.Alt;
+        normalizedKey = systemKey;
+        return true;
+    }
+
     public bool TryRecord(
         string action,
         ModifierKeys modifiers,

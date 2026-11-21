@@ -10,6 +10,7 @@ public sealed class MouseUpAutoReadTrigger : IAutoReadTrigger
     private readonly IMouseHook _hook;
     private readonly IClock _clock;
     private readonly TimeSpan _debounce;
+    private readonly Action<string>? _diagnostic;
     private volatile bool _started;
     private int _generation;
     private int _pending;
@@ -18,12 +19,14 @@ public sealed class MouseUpAutoReadTrigger : IAutoReadTrigger
         Func<bool> isForegroundOwnWindow,
         IMouseHook? hook = null,
         IClock? clock = null,
-        TimeSpan? debounce = null)
+        TimeSpan? debounce = null,
+        Action<string>? diagnostic = null)
     {
         _isForegroundOwnWindow = isForegroundOwnWindow;
         _hook = hook ?? new Win32MouseHook();
         _clock = clock ?? new SystemClock();
         _debounce = debounce ?? TimeSpan.FromMilliseconds(120);
+        _diagnostic = diagnostic;
     }
 
     public event Action? SelectionCompleted;
@@ -38,6 +41,7 @@ public sealed class MouseUpAutoReadTrigger : IAutoReadTrigger
         _hook.MouseUp += OnMouseUp;
         _hook.Start();
         _started = true;
+        _diagnostic?.Invoke("auto-read hook started");
     }
 
     public void Stop()
@@ -58,11 +62,13 @@ public sealed class MouseUpAutoReadTrigger : IAutoReadTrigger
     {
         if (_isForegroundOwnWindow())
         {
+            _diagnostic?.Invoke("auto-read ignored: own window foreground");
             return;
         }
 
         if (Interlocked.CompareExchange(ref _pending, 1, 0) != 0)
         {
+            _diagnostic?.Invoke("auto-read ignored: debounce pending");
             return;
         }
 
@@ -81,6 +87,7 @@ public sealed class MouseUpAutoReadTrigger : IAutoReadTrigger
         Interlocked.Exchange(ref _pending, 0);
         if (_started)
         {
+            _diagnostic?.Invoke("auto-read selection completed");
             SelectionCompleted?.Invoke();
         }
     }
