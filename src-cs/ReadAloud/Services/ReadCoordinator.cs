@@ -38,7 +38,10 @@ public sealed class ReadCoordinator
         }
     }
 
-    public async Task RequestReadAsync(string? manualText = null)
+    public async Task RequestReadAsync(
+        string? manualText = null,
+        string? source = null,
+        CaptureMethod? captureMethod = null)
     {
         var config = _configProvider();
         long generation;
@@ -52,19 +55,20 @@ public sealed class ReadCoordinator
         try
         {
             string text;
-            string source;
+            var readSource = source;
 
             if (!string.IsNullOrWhiteSpace(manualText))
             {
                 text = manualText;
-                source = "manual";
+                readSource ??= "manual";
             }
             else
             {
                 var capture = await _selection.CaptureAsync(config.CaptureMethod);
                 _log.Add($"Capture ({capture.Method}): {capture.Diagnostic}");
                 text = capture.Text;
-                source = capture.Method.ToString();
+                readSource = capture.Method.ToString();
+                captureMethod = config.CaptureMethod;
 
                 if (string.IsNullOrWhiteSpace(text))
                 {
@@ -84,8 +88,12 @@ public sealed class ReadCoordinator
                 _log.Add($"Text truncated to {config.MaxChars} characters.");
             }
 
-            _log.Add($"Reading {text.Length} characters from {source}.");
-            await _playback.PlayAsync(text, VoiceOptions.FromConfig(config));
+            _log.Add($"Reading {text.Length} characters from {readSource}.");
+            await _playback.PlayAsync(
+                text,
+                VoiceOptions.FromConfig(config),
+                readSource,
+                captureMethod ?? config.CaptureMethod);
         }
         finally
         {

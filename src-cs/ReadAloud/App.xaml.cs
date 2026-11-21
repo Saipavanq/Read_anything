@@ -13,6 +13,7 @@ public partial class App : System.Windows.Application
     private ConfigService? _config;
     private IThemeService? _themes;
     private ActivityLog? _log;
+    private HistoryService? _history;
     private HomeViewModel? _home;
     private PlaybackService? _playback;
     private MiniPlayerWindow? _miniWindow;
@@ -42,13 +43,16 @@ public partial class App : System.Windows.Application
         _themes.Apply(config.Theme);
 
         _log = new ActivityLog();
+        _history = new HistoryService(Path.Combine(roamingAppData, "Read Aloud", "history.json"));
+        _history.SetEnabled(config.HistoryEnabled);
+        _history.ApplyRetention(config.HistoryRetentionDays);
         var selection = new SelectionService(
             new ClipboardService(),
             new KeyboardSender(),
             new UiaSelectionReader(),
             new SystemClock());
         var speech = new SapiSpeechEngine();
-        _playback = new PlaybackService(speech, () => _config!.Load(), _config.Save);
+        _playback = new PlaybackService(speech, () => _config!.Load(), _config.Save, _history);
         _miniWindow = new MiniPlayerWindow();
         _miniPlayer = new MiniPlayerService(_miniWindow, () => _config!.Load());
         _miniViewModel = new MiniPlayerViewModel(_playback, _miniPlayer);
@@ -73,7 +77,8 @@ public partial class App : System.Windows.Application
         {
             Home = _home,
             MiniPlayer = _miniViewModel,
-            VoiceLibrary = new VoiceLibraryViewModel(speech, _config)
+            VoiceLibrary = new VoiceLibraryViewModel(speech, _config),
+            History = new HistoryViewModel(_history, coordinator)
         };
 
         var tray = new TrayService(
@@ -163,25 +168,33 @@ public partial class App : System.Windows.Application
         var window = new SettingsWindow(viewModel) { Owner = _window };
         if (window.ShowDialog() == true)
         {
-            ApplyMiniPlayerPreferences();
+            ApplyToggledPreferences();
             _home?.Refresh();
             _log?.Add("Settings updated.");
         }
         else
         {
-            ApplyMiniPlayerPreferences();
+            ApplyToggledPreferences();
             _home?.Refresh();
         }
     }
 
-    private void ApplyMiniPlayerPreferences()
+    private void ApplyToggledPreferences()
     {
-        if (_config is null || _miniPlayer is null)
+        if (_config is null)
         {
             return;
         }
 
         var config = _config.Load();
+        _history?.SetEnabled(config.HistoryEnabled);
+        _history?.ApplyRetention(config.HistoryRetentionDays);
+
+        if (_miniPlayer is null)
+        {
+            return;
+        }
+
         _miniPlayer.SetAlwaysOnTop(config.MiniPlayerAlwaysOnTop);
         if (!config.MiniPlayerEnabled)
         {

@@ -16,6 +16,7 @@ public sealed class PlaybackService
     private readonly ISpeechEngine _speech;
     private readonly Func<AppConfig> _configProvider;
     private readonly Action<AppConfig>? _saveConfig;
+    private readonly IHistorySink? _history;
 
     private PlaybackState _state = new(
         string.Empty,
@@ -34,16 +35,19 @@ public sealed class PlaybackService
     private VoiceOptions _lastOptions = new(string.Empty, 0, 100);
     private Action? _completedHandler;
     private Action<int, int>? _progressHandler;
+    private HistoryEntry? _activeEntry;
     private long _generation;
 
     public PlaybackService(
         ISpeechEngine speech,
         Func<AppConfig> configProvider,
-        Action<AppConfig>? saveConfig = null)
+        Action<AppConfig>? saveConfig = null,
+        IHistorySink? history = null)
     {
         _speech = speech;
         _configProvider = configProvider;
         _saveConfig = saveConfig;
+        _history = history;
     }
 
     public event Action<PlaybackState>? StateChanged;
@@ -80,7 +84,11 @@ public sealed class PlaybackService
             .ToArray();
     }
 
-    public Task PlayAsync(string text, VoiceOptions options)
+    public Task PlayAsync(
+        string text,
+        VoiceOptions options,
+        string? source = null,
+        CaptureMethod captureMethod = CaptureMethod.ClipboardFirst)
     {
         if (string.IsNullOrWhiteSpace(text))
         {
@@ -91,7 +99,15 @@ public sealed class PlaybackService
         var config = _configProvider();
         var effective = options with { Rate = SpeedToRate(config.PlaybackSpeed) };
         var sentences = SplitSentences(text);
-        Start(text, sentences, 0, effective, config.PlaybackSpeed);
+        Start(
+            text,
+            sentences,
+            0,
+            effective,
+            config.PlaybackSpeed,
+            source ?? "manual",
+            captureMethod,
+            continueHistoryEntry: false);
         return Task.CompletedTask;
     }
 
@@ -114,11 +130,20 @@ public sealed class PlaybackService
             return;
         }
 
-        Start(_lastText, _lastSentences, _lastIndex, _lastOptions, _state.Speed);
+        Start(
+            _lastText,
+            _lastSentences,
+            _lastIndex,
+            _lastOptions,
+            _state.Speed,
+            _state.Source,
+            _state.CaptureMethod,
+            continueHistoryEntry: true);
     }
 
     public void Stop()
     {
+        FinalizeActive("stopped", State.Elapsed);
         Supersede();
         _speech.Stop();
         SetState(new PlaybackState(
@@ -171,7 +196,15 @@ public sealed class PlaybackService
     {
         var sentences = State.Sentences;
         var text = string.Join(" ", sentences.Skip(index));
-        Start(text, sentences, index, _lastOptions, _state.Speed);
+        Start(
+            text,
+            sentences,
+            index,
+            _lastOptions,
+            _state.Speed,
+            _state.Source,
+            _state.CaptureMethod,
+            continueHistoryEntry: false);
     }
 
     private void Start(
@@ -179,12 +212,21 @@ public sealed class PlaybackService
         IReadOnlyList<string> sentences,
         int index,
         VoiceOptions options,
-        double speed)
+        double speed,
+        string source,
+        CaptureMethod captureMethod,
+        bool continueHistoryEntry)
     {
+        if (!continueHistoryEntry)
+        {
+            FinalizeActive("interrupted", State.Elapsed);
+        }
+
         Supersede();
 
         var generation = Interlocked.Increment(ref _generation);
         var total = EstimateDuration(text);
+        var config = _configProvider();
 
         SetState(new PlaybackState(
             text,
@@ -195,7 +237,24 @@ public sealed class PlaybackService
             options.VoiceName,
             Zero,
             total,
-            0));
+            0,
+            source,
+            captureMethod));
+
+        if (_activeEntry is null && _history is not null && config.HistoryEnabled)
+        {
+            _activeEntry = new HistoryEntry(
+                Guid.NewGuid().ToString("N"),
+                text,
+                DateTimeOffset.UtcNow,
+                Zero,
+                "playing",
+                options.VoiceName,
+                speed,
+                captureMethod.ToString(),
+                source);
+            _history.Record(_activeEntry);
+        }
 
         void OnCompleted()
         {
@@ -205,6 +264,7 @@ public sealed class PlaybackService
             }
 
             Detach();
+            FinalizeActive("completed", total);
             SetState(_state with
             {
                 Status = PlaybackStatus.Completed,
@@ -252,6 +312,18 @@ public sealed class PlaybackService
         {
             OnCompleted();
         }
+    }
+
+    private void FinalizeActive(string status, TimeSpan duration)
+    {
+        if (_activeEntry is null)
+        {
+            return;
+        }
+
+        var entry = _activeEntry with { Status = status, Duration = duration };
+        _activeEntry = null;
+        _history?.Record(entry);
     }
 
     private void Supersede()

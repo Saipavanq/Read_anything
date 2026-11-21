@@ -45,6 +45,8 @@ public sealed class MainViewModel : ObservableObject
 
     public VoiceLibraryViewModel? VoiceLibrary { get; set; }
 
+    public HistoryViewModel? History { get; set; }
+
     public string SelectedNavigation
     {
         get => _selectedNavigation;
@@ -61,7 +63,7 @@ public sealed class MainViewModel : ObservableObject
         {
             ["Home"] = true,
             ["Voice Library"] = true,
-            ["History"] = false,
+            ["History"] = true,
             ["Settings"] = true
         };
 

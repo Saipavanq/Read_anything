@@ -1,0 +1,99 @@
+<UserControl x:Class="ReadAloud.Views.HistoryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             d:DesignHeight="600" d:DesignWidth="760">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="24,20" MaxWidth="720">
+            <DockPanel>
+                <StackPanel>
+                    <TextBlock Text="History"
+                               FontSize="26"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextBrush}" />
+                    <TextBlock Text="Local only. Clear or disable history in Settings at any time."
+                               Margin="0,4,0,18"
+                               FontSize="13"
+                               Foreground="{DynamicResource MutedTextBrush}" />
+                </StackPanel>
+                <Button DockPanel.Dock="Right"
+                        Content="Delete all"
+                        VerticalAlignment="Center"
+                        Padding="12,7"
+                        AutomationProperties.Name="Delete all history entries"
+                        Command="{Binding DeleteAllCommand}" />
+            </DockPanel>
+
+            <TextBlock Text="No history yet. History is off until you enable it in Settings."
+                       Margin="0,8,0,0"
+                       Foreground="{DynamicResource MutedTextBrush}">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Entries.Count}" Value="0">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+
+            <ItemsControl ItemsSource="{Binding Entries}" Margin="0,14,0,0">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="0,0,0,10"
+                                Padding="14"
+                                Background="{DynamicResource CardBackgroundBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource CornerRadius}">
+                            <StackPanel>
+                                <DockPanel>
+                                    <TextBlock Text="{Binding Timestamp, StringFormat={}{0:g}}"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource MutedTextBrush}" />
+                                    <TextBlock DockPanel.Dock="Right"
+                                               Text="{Binding Status}"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource AccentBrush}" />
+                                </DockPanel>
+
+                                <TextBlock Text="{Binding Text}"
+                                           Margin="0,8,0,8"
+                                           MaxHeight="42"
+                                           TextTrimming="CharacterEllipsis"
+                                           TextWrapping="Wrap"
+                                           Foreground="{DynamicResource TextBrush}" />
+
+                                <TextBlock FontSize="11" Foreground="{DynamicResource MutedTextBrush}">
+                                    <Run Text="{Binding Source}" />
+                                    <Run Text=" · " />
+                                    <Run Text="{Binding Voice}" />
+                                    <Run Text=" · " />
+                                    <Run Text="{Binding Duration}" />
+                                </TextBlock>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                    <Button Content="Replay"
+                                            Padding="10,5"
+                                            AutomationProperties.Name="Replay this history entry"
+                                            Command="{Binding DataContext.ReplayCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                                            CommandParameter="{Binding}" />
+                                    <Button Content="Delete"
+                                            Margin="8,0,0,0"
+                                            Padding="10,5"
+                                            AutomationProperties.Name="Delete this history entry"
+                                            Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                                            CommandParameter="{Binding}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

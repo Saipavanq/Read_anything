@@ -19,4 +19,6 @@ public sealed record PlaybackState(
     string VoiceName,
     TimeSpan Elapsed,
     TimeSpan EstimatedRemaining,
-    double Progress);
+    double Progress,
+    string Source = "manual",
+    CaptureMethod CaptureMethod = CaptureMethod.ClipboardFirst);

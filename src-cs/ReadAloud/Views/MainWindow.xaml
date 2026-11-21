@@ -16,6 +16,9 @@
         <DataTemplate DataType="{x:Type vm:VoiceLibraryViewModel}">
             <views:VoiceLibraryView />
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:HistoryViewModel}">
+            <views:HistoryView />
+        </DataTemplate>
     </Window.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
@@ -104,6 +107,9 @@
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding SelectedNavigation}" Value="Voice Library">
                             <Setter Property="Content" Value="{Binding VoiceLibrary}" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding SelectedNavigation}" Value="History">
+                            <Setter Property="Content" Value="{Binding History}" />
                         </DataTrigger>
                     </Style.Triggers>
                 </Style>

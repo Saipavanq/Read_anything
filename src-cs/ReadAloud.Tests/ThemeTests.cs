@@ -48,7 +48,7 @@ public sealed class ThemeTests
     }
 
     [Fact]
-    public void MainViewModel_NavigateCommand_SelectsEnabledPage()
+    public void MainViewModel_NavigateCommand_SelectsPage()
     {
         var model = new MainViewModel(new FakeThemeService(), new FakeHotkeyRegistrar());
 
@@ -56,11 +56,11 @@ public sealed class ThemeTests
         Assert.Equal("Voice Library", model.SelectedNavigation);
 
         model.NavigateCommand.Execute("History");
-        Assert.Equal("Voice Library", model.SelectedNavigation);
+        Assert.Equal("History", model.SelectedNavigation);
     }
 
     [Fact]
-    public void MainViewModel_MarksUnbuiltNavItemsDisabled()
+    public void MainViewModel_MarksAllNavItemsEnabled()
     {
         var model = new MainViewModel(new FakeThemeService(), new FakeHotkeyRegistrar());
 
@@ -71,7 +71,7 @@ public sealed class ThemeTests
             model.NavigationItems);
         Assert.True(model.NavigationEnabled["Home"]);
         Assert.True(model.NavigationEnabled["Voice Library"]);
-        Assert.False(model.NavigationEnabled["History"]);
+        Assert.True(model.NavigationEnabled["History"]);
         Assert.True(model.NavigationEnabled["Settings"]);
 
         model.ApplyTheme("orbit");
