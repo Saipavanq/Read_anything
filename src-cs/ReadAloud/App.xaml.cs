@@ -15,6 +15,9 @@ public partial class App : System.Windows.Application
     private ActivityLog? _log;
     private HomeViewModel? _home;
     private PlaybackService? _playback;
+    private MiniPlayerWindow? _miniWindow;
+    private MiniPlayerService? _miniPlayer;
+    private MiniPlayerViewModel? _miniViewModel;
     private MainViewModel? _main;
     private MainWindow? _window;
     private HotkeyService? _hotkeys;
@@ -24,6 +27,7 @@ public partial class App : System.Windows.Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        ShutdownMode = ShutdownMode.OnMainWindowClose;
         WinFormsApplication.EnableVisualStyles();
         WinFormsApplication.SetCompatibleTextRenderingDefault(false);
 
@@ -45,6 +49,13 @@ public partial class App : System.Windows.Application
             new SystemClock());
         var speech = new SapiSpeechEngine();
         _playback = new PlaybackService(speech, () => _config!.Load(), _config.Save);
+        _miniWindow = new MiniPlayerWindow();
+        _miniPlayer = new MiniPlayerService(_miniWindow, () => _config!.Load());
+        _miniViewModel = new MiniPlayerViewModel(_playback, _miniPlayer);
+        _miniWindow.DataContext = _miniViewModel;
+        _miniPlayer.ExpandRequested += ShowMainWindow;
+        _playback.StateChanged += state => Dispatcher.Invoke(() => _miniPlayer?.UpdateState(state));
+
         var coordinator = new ReadCoordinator(selection, _playback, _log, () => _config!.Load());
 
         _registrar = new Win32HotkeyRegistrar();
@@ -60,7 +71,8 @@ public partial class App : System.Windows.Application
         _home = new HomeViewModel(coordinator, _log, _hotkeys, () => _config!.Load(), _config.Save);
         _main = new MainViewModel(_themes, _registrar)
         {
-            Home = _home
+            Home = _home,
+            MiniPlayer = _miniViewModel
         };
 
         var tray = new TrayService(
@@ -113,7 +125,11 @@ public partial class App : System.Windows.Application
 
         try
         {
-            await await Dispatcher.InvokeAsync(() => _home.RequestReadSelectionAsync());
+            await await Dispatcher.InvokeAsync(async () =>
+            {
+                _miniPlayer?.ShowForSelectionRead();
+                await _home.RequestReadSelectionAsync();
+            });
         }
         catch (Exception ex)
         {
@@ -146,12 +162,29 @@ public partial class App : System.Windows.Application
         var window = new SettingsWindow(viewModel) { Owner = _window };
         if (window.ShowDialog() == true)
         {
+            ApplyMiniPlayerPreferences();
             _home?.Refresh();
             _log?.Add("Settings updated.");
         }
         else
         {
+            ApplyMiniPlayerPreferences();
             _home?.Refresh();
+        }
+    }
+
+    private void ApplyMiniPlayerPreferences()
+    {
+        if (_config is null || _miniPlayer is null)
+        {
+            return;
+        }
+
+        var config = _config.Load();
+        _miniPlayer.SetAlwaysOnTop(config.MiniPlayerAlwaysOnTop);
+        if (!config.MiniPlayerEnabled)
+        {
+            _miniPlayer.Hide();
         }
     }
 

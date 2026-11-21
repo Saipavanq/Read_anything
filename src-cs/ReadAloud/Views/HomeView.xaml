@@ -134,6 +134,73 @@
                     CornerRadius="{DynamicResource CornerRadius}"
                     Padding="18"
                     Margin="0,14,0,0"
+                    DataContext="{Binding MiniPlayer}">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,10">
+                        <TextBlock Text="Playback"
+                                   FontSize="15"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextBrush}" />
+                        <TextBlock DockPanel.Dock="Right"
+                                   HorizontalAlignment="Right"
+                                   Text="{Binding StatusText}"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource MutedTextBrush}" />
+                    </DockPanel>
+
+                    <TextBlock Text="{Binding State.Text}"
+                               MaxHeight="42"
+                               TextTrimming="CharacterEllipsis"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource MutedTextBrush}" />
+
+                    <ProgressBar Height="4"
+                                 Margin="0,12,0,6"
+                                 Maximum="100"
+                                 Value="{Binding ProgressPercent}"
+                                 Foreground="{DynamicResource AccentBrush}"
+                                 Background="{DynamicResource SubtleBrush}"
+                                 AutomationProperties.Name="Playback progress" />
+
+                    <DockPanel Margin="0,0,0,12">
+                        <TextBlock Text="{Binding ElapsedText}"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource MutedTextBrush}" />
+                        <TextBlock DockPanel.Dock="Right"
+                                   Text="{Binding RemainingText}"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource MutedTextBrush}" />
+                    </DockPanel>
+
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Previous sentence"
+                                Padding="10,5"
+                                Command="{Binding SkipPreviousCommand}" />
+                        <Button Content="{Binding PauseResumeLabel}"
+                                Margin="8,0,0,0"
+                                Padding="10,5"
+                                IsEnabled="{Binding CanPauseResume}"
+                                Background="{DynamicResource AccentBrush}"
+                                Foreground="{DynamicResource AccentForegroundBrush}"
+                                Command="{Binding PauseResumeCommand}" />
+                        <Button Content="Next sentence"
+                                Margin="8,0,0,0"
+                                Padding="10,5"
+                                Command="{Binding SkipNextCommand}" />
+                        <Button Content="Stop"
+                                Margin="8,0,0,0"
+                                Padding="10,5"
+                                Command="{Binding StopCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Background="{DynamicResource CardBackgroundBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="{DynamicResource CornerRadius}"
+                    Padding="18"
+                    Margin="0,14,0,0"
                     Visibility="{Binding ShowActivity, Converter={StaticResource BoolToVisibility}}">
                 <StackPanel>
                     <TextBlock Text="Activity"

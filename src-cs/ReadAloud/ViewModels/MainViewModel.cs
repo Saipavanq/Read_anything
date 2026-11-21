@@ -30,6 +30,8 @@ public sealed class MainViewModel : ObservableObject
         set => SetProperty(ref _home, value);
     }
 
+    public MiniPlayerViewModel? MiniPlayer { get; set; }
+
     public IReadOnlyList<string> NavigationItems { get; } =
         new[] { "Home", "Voice Library", "History", "Settings" };
 
