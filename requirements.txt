@@ -1,6 +1,7 @@
 pynput>=1.7
 pyperclip>=1.9
 pywin32>=305
+comtypes>=1.2
 pystray>=0.19
 pillow>=10.0
 pyttsx3>=2.90
