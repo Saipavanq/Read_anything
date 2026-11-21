@@ -59,13 +59,17 @@ class VoiceCommandListener:
                 if self._model is None:
                     path, local = find_model_path(self.config)
                     log.info("Loading Whisper model from %s (local=%s)", path, local)
-                    self._model = WhisperModel(
-                        path,
-                        device="cpu",
-                        compute_type="int8",
-                        local_files_only=local,
-                        download_root=self.config.get("whisper_cache") or None,
-                    )
+                    try:
+                        self._model = WhisperModel(
+                            path,
+                            device="cpu",
+                            compute_type="int8",
+                            local_files_only=local,
+                            download_root=self.config.get("whisper_cache") or None,
+                        )
+                    except Exception as exc:
+                        log.error("Could not load Whisper model from %s: %s", path, exc)
+                        raise
         return self._model
 
     def listen_once(self) -> tuple[str, str | None]:

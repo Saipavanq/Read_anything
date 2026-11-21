@@ -53,7 +53,7 @@ def _restore_clipboard(snapshot: dict) -> None:
             try:
                 win32clipboard.SetClipboardData(fmt, value)
             except Exception as exc:
-                log.debug("Could not restore clipboard format %s: %s", fmt, exc)
+                log.warning("Could not restore clipboard format %s: %s", fmt, exc)
     except Exception as exc:
         log.debug("Clipboard restore failed: %s", exc)
     finally:

@@ -6,7 +6,9 @@ import os
 import queue
 import sys
 import threading
+import time
 import tkinter as tk
+import uuid
 from tkinter import ttk
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -319,9 +321,17 @@ class App:
         threading.Thread(target=run, daemon=True, name="voice-command").start()
 
     def handle_request(self, mode: str | None, snapshot: dict) -> None:
+        request_id = uuid.uuid4().hex[:8]
+        started = time.perf_counter()
+
+        def elapsed_ms() -> int:
+            return int((time.perf_counter() - started) * 1000)
+
+        log.info("request_id=%s start mode=%s", request_id, mode or "default")
         try:
             text = capture_selected_text(snapshot.get("capture_method"))
             if not text:
+                log.warning("request_id=%s no selection after %dms", request_id, elapsed_ms())
                 notify("Read Aloud", "No text selected. Highlight text, then press the hotkey.")
                 return
 
@@ -342,8 +352,12 @@ class App:
 
             notify("Read Aloud", f"Reading {len(text)} characters…")
             self.tts.speak(text)
+            log.info(
+                "request_id=%s completed in %dms chars=%d mode=%s",
+                request_id, elapsed_ms(), len(text), effective_mode,
+            )
         except Exception as exc:
-            log.exception("Failed to handle read request")
+            log.exception("request_id=%s failed after %dms", request_id, elapsed_ms())
             notify("Read Aloud", f"Error: {exc}")
 
     def worker(self) -> None:
