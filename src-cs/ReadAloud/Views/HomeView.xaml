@@ -1,0 +1,36 @@
+<UserControl x:Class="ReadAloud.Views.HomeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             d:DesignHeight="500" d:DesignWidth="800">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="28" Background="{DynamicResource BackgroundBrush}">
+            <TextBlock Text="{Binding Greeting}"
+                       FontSize="28"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextBrush}" />
+            <TextBlock Text="{Binding Status}"
+                       Margin="0,6,0,24"
+                       FontSize="14"
+                       Foreground="{DynamicResource TextBrush}"
+                       Opacity="0.75" />
+
+            <Border Background="{DynamicResource CardBackgroundBrush}"
+                    CornerRadius="{DynamicResource CornerRadius}"
+                    Padding="20">
+                <StackPanel>
+                    <TextBlock Text="Paste text here, or select text anywhere on your desktop..."
+                               Foreground="{DynamicResource TextBrush}"
+                               Opacity="0.6"
+                               TextWrapping="Wrap" />
+                    <TextBlock Margin="0,18,0,0"
+                               Text="Read selection"
+                               Foreground="{DynamicResource TextBrush}"
+                               Opacity="0.85" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
