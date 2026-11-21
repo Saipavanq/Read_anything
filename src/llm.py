@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from urllib.parse import urlparse
 
 import requests
 
@@ -35,6 +36,15 @@ def build_messages(text: str, mode: str, config: dict) -> list[dict]:
     ]
 
 
+def valid_base_url(url: str) -> bool:
+    """Accept only absolute http(s) URLs — the local API base must be explicit."""
+    try:
+        parsed = urlparse((url or "").strip())
+    except ValueError:
+        return False
+    return parsed.scheme in ("http", "https") and bool(parsed.netloc)
+
+
 class LocalLLM:
     def __init__(self, config: dict):
         self.config = config
@@ -42,11 +52,13 @@ class LocalLLM:
     def discover(self) -> tuple[str, list[str], str]:
         """Return (base_url, model_ids, provider_label) for a reachable endpoint."""
         configured = (self.config.get("llm_base_url") or "").strip()
-        candidates = (
-            [("Configured", configured.rstrip("/"))]
-            if configured
-            else CANDIDATES
-        )
+        candidates = []
+        if configured:
+            if valid_base_url(configured):
+                candidates.append(("Configured", configured.rstrip("/")))
+            else:
+                log.warning("Ignoring invalid llm_base_url: %r", configured)
+        candidates.extend(CANDIDATES)
         for label, base in candidates:
             try:
                 response = requests.get(f"{base}/models", timeout=1.5)
