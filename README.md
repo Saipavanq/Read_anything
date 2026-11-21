@@ -71,6 +71,17 @@ Selection capture order: UI Automation first (does not touch the clipboard), the
 - **Voice command fails:** confirm a microphone is available; the first run loads the Whisper model and can take a few seconds.
 - **Online voice fails:** the app falls back to the offline Windows voice.
 
+## Diagnostics
+
+Every read request is tagged with a short `request_id` in `logs/app.log`, for example:
+
+```
+2026-11-21 18:51:57,123 INFO     [read-worker] request_id=9f3a2c10 start mode=default
+2026-11-21 18:51:58,010 INFO     [read-worker] request_id=9f3a2c10 completed in 887ms chars=412 mode=verbatim
+```
+
+Use the ID to follow one request through capture, LLM processing and speech, including failures. The activity panel in the window shows the same messages with timestamps.
+
 ## Files
 
 - `dist\ReadAloud\ReadAloud.exe` — standalone Windows application

@@ -9,12 +9,13 @@ import threading
 import time
 import tkinter as tk
 import uuid
+from datetime import datetime
 from tkinter import ttk
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import pystray
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageTk
 from pynput import keyboard
 
 from config import load_config, normalise_config, save_config
@@ -44,6 +45,38 @@ def notify(title: str, message: str) -> None:
             app.icon.notify(message, title)
         except Exception as exc:
             log.debug("Tray notification failed: %s", exc)
+
+
+class Tooltip:
+    """Small hover hint for a Tk widget."""
+
+    def __init__(self, widget: tk.Widget, text: str):
+        self.widget = widget
+        self.text = text
+        self.window: tk.Toplevel | None = None
+        widget.bind("<Enter>", self.show)
+        widget.bind("<Leave>", self.hide)
+
+    def show(self, _event=None) -> None:
+        if self.window is not None:
+            return
+        x = self.widget.winfo_rootx() + 20
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 4
+        self.window = tk.Toplevel(self.widget)
+        self.window.wm_overrideredirect(True)
+        self.window.wm_geometry(f"+{x}+{y}")
+        ttk.Label(
+            self.window,
+            text=self.text,
+            background="#ffffe0",
+            relief=tk.SOLID,
+            borderwidth=1,
+        ).pack()
+
+    def hide(self, _event=None) -> None:
+        if self.window is not None:
+            self.window.destroy()
+            self.window = None
 
 
 def snapshot_settings(vars_dict: dict, config: dict) -> dict:
@@ -120,6 +153,9 @@ class App:
         self.requests_queue: queue.Queue = queue.Queue()
         self.icon: pystray.Icon | None = None
         self._closing = False
+        self.tooltips: list[Tooltip] = []
+        self._window_icon = None
+        self.status_label: ttk.Label | None = None
 
         self.engine_var = tk.StringVar(value=self.config.get("tts_engine", "offline"))
         self.mode_var = tk.StringVar(value=self.config.get("llm_mode", "verbatim"))
@@ -146,6 +182,8 @@ class App:
     # ---------- UI ----------
     def _build_window(self) -> None:
         self.root.title("Read Aloud — Selected Text Speech")
+        self._window_icon = ImageTk.PhotoImage(self.make_icon_image())
+        self.root.iconphoto(True, self._window_icon)
         self.root.geometry("640x560")
         self.root.minsize(560, 480)
         self.root.configure(padx=10, pady=10)
@@ -157,11 +195,12 @@ class App:
             text="Read Aloud",
             font=("Segoe UI", 16, "bold"),
         ).pack(side=tk.LEFT)
-        ttk.Label(
+        self.status_label = ttk.Label(
             header,
             textvariable=self.status_var,
             foreground="#2563a8",
-        ).pack(side=tk.LEFT, padx=(16, 0))
+        )
+        self.status_label.pack(side=tk.LEFT, padx=(16, 0))
 
         ttk.Label(
             self.root,
@@ -170,14 +209,22 @@ class App:
 
         buttons = ttk.Frame(self.root)
         buttons.pack(fill=tk.X, pady=4)
-        ttk.Button(buttons, text="Read selected text", command=self.request_read).pack(
-            side=tk.LEFT, padx=(0, 6)
+        read_button = ttk.Button(
+            buttons, text="Read selected text", command=self.request_read
         )
-        ttk.Button(buttons, text="Voice command…", command=self.start_voice_command).pack(
-            side=tk.LEFT, padx=(0, 6)
+        read_button.pack(side=tk.LEFT, padx=(0, 6))
+        voice_button = ttk.Button(
+            buttons, text="Voice command…", command=self.start_voice_command
         )
-        ttk.Button(buttons, text="Stop speaking", command=self.stop_speaking).pack(
-            side=tk.LEFT
+        voice_button.pack(side=tk.LEFT, padx=(0, 6))
+        stop_button = ttk.Button(buttons, text="Stop speaking", command=self.stop_speaking)
+        stop_button.pack(side=tk.LEFT)
+        self.tooltips.extend(
+            [
+                Tooltip(read_button, "Read the current selection (Ctrl+Alt+R)"),
+                Tooltip(voice_button, "Say a command such as 'summarize'"),
+                Tooltip(stop_button, "Stop speech immediately (Ctrl+Alt+X)"),
+            ]
         )
 
         controls = ttk.LabelFrame(self.root, text="Speech", padding=10)
@@ -257,7 +304,7 @@ class App:
 
     def _append_log(self, title: str, message: str) -> None:
         self.log_text.configure(state=tk.NORMAL)
-        self.log_text.insert(tk.END, f"{title}: {message}\n")
+        self.log_text.insert(tk.END, f"{datetime.now():%H:%M:%S} {title}: {message}\n")
         lines = self.log_text.get("1.0", tk.END).splitlines()
         if len(lines) > 200:
             self.log_text.delete("1.0", f"{len(lines) - 200}.0")
@@ -283,6 +330,15 @@ class App:
                 return
             self._append_log(title, message)
             self.status_var.set(message[:70])
+            lowered = message.lower()
+            if lowered.startswith(("error", "no text", "could not")):
+                colour = "#c0392b"
+            elif lowered.startswith("reading"):
+                colour = "#1e8449"
+            else:
+                colour = "#2563a8"
+            if self.status_label is not None:
+                self.status_label.configure(foreground=colour)
         self.root.after(120, self.poll_events)
 
     def refresh_controls(self) -> None:

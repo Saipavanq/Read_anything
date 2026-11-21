@@ -1,8 +1,8 @@
 # Plan & Report — Windows "Read Selected Text Aloud" Assistant
 
-**Status:** Draft for review and approval. **No application code has been written yet.**
-**Date:** 2026-11-20
-**Workspace:** `C:\Users\malla\Downloads\Read anything` (currently empty)
+**Status:** Approved and implemented. A reliability and quality pass was completed on 2026-11-21 (see section 13).
+**Date:** 2026-11-20 (original plan), 2026-11-21 (reliability pass)
+**Workspace:** `C:\Users\malla\Downloads\Read anything`
 
 ---
 
@@ -195,3 +195,22 @@ The app was also packaged into a standalone Windows executable at `dist\ReadAlou
 ---
 
 **Status:** approved — implementation is underway.
+
+---
+
+## 13. Reliability and quality pass (2026-11-21)
+
+A second pass focused on correctness rather than new features. It followed a curated set of high-star GitHub engineering skills installed under `.opencode/skills/` (see `SKILLS.md`), using test-driven development throughout.
+
+Changes made:
+
+- **Config hardening:** values are coerced to their declared types, bounded values clamp to safe ranges, non-positive durations/counters fall back to defaults, unknown keys are dropped, and corrupt JSON recovers to defaults without blocking startup.
+- **Hotkey validation:** malformed and duplicate combinations are detected and reported instead of silently dropping an action.
+- **Thread safety:** the read worker no longer touches Tk variables. The main thread snapshots controls into a plain dict and passes it through the queue. The settings dialog is now a `Toplevel` opened on the main thread rather than a second `Tk` root created in a daemon thread.
+- **Settings persistence:** engine, mode and volume changes are saved immediately rather than waiting for the next read.
+- **TTS robustness:** stop requests now cancel in-flight `edge-tts` synthesis via a generation counter, mixer initialisation failures are handled, and fallback to the offline voice is guarded.
+- **LLM discovery:** an unreachable configured endpoint no longer prevents trying LM Studio and Ollama; base URLs are validated as absolute http(s) URLs.
+- **Observability:** each read gets a short `request_id` logged at start, completion (with elapsed milliseconds and character count) and failure. Clipboard-format restore failures and Whisper model load failures are logged as warnings/errors.
+- **Light UI polish:** status feedback, tooltips, a window icon, and timestamped activity lines.
+
+Verification: `.venv\Scripts\python.exe -m unittest discover -s tests` — 46 tests passing. The design and implementation plan are in `docs/superpowers/`.
