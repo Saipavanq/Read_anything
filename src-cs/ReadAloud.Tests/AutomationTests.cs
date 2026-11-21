@@ -1,8 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Input;
 using ReadAloud.Models;
 using ReadAloud.Services;
+using ReadAloud.ViewModels;
+using ReadAloud.Views;
 
 namespace ReadAloud.Tests;
 
@@ -94,6 +99,51 @@ public sealed class AutomationTests
 
         h.Hook.RaiseMouseUp();
         Assert.Null(h.Service.LastReadTask);
+    }
+
+    [Fact]
+    public void StartWithWindows_WritesRunValue()
+    {
+        var registry = new FakeRegistryAccessor();
+        var startup = new StartupService(registry);
+
+        startup.SetStartWithWindows(true);
+
+        Assert.False(string.IsNullOrWhiteSpace(registry.Value));
+        Assert.True(startup.IsStartWithWindowsEnabled);
+    }
+
+    [Fact]
+    public void DisablingStartWithWindows_DeletesRunValue()
+    {
+        var registry = new FakeRegistryAccessor();
+        var startup = new StartupService(registry);
+        startup.SetStartWithWindows(true);
+
+        startup.SetStartWithWindows(false);
+
+        Assert.Null(registry.Value);
+        Assert.False(startup.IsStartWithWindowsEnabled);
+    }
+
+    [Fact]
+    public void MinimizeToTray_ChangesMinimizeOnly()
+    {
+        Assert.True(MainWindow.ShouldHideOnMinimize(WindowState.Minimized, minimizeToTray: true));
+        Assert.False(MainWindow.ShouldHideOnMinimize(WindowState.Normal, minimizeToTray: true));
+        Assert.True(MainWindow.ShouldExitOnClose(minimizeToTray: true));
+    }
+
+    [Fact]
+    public void PrivacyDisclosure_ListsAutoReadAndHistory()
+    {
+        using var h = new SettingsHarness();
+
+        var disclosure = h.ViewModel.PrivacyDisclosure;
+
+        Assert.Contains("auto-read", disclosure, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("history", disclosure, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("offline", disclosure, StringComparison.OrdinalIgnoreCase);
     }
 
     private sealed class Harness
@@ -233,5 +283,86 @@ public sealed class AutomationTests
         public void Stop()
         {
         }
+    }
+
+    private sealed class FakeRegistryAccessor : IRegistryAccessor
+    {
+        public string? Value { get; private set; }
+
+        public string? GetValue(string name) => Value;
+
+        public void SetValue(string name, string value) => Value = value;
+
+        public void DeleteValue(string name) => Value = null;
+    }
+
+    private sealed class SettingsHarness : IDisposable
+    {
+        private readonly string _directory;
+
+        public SettingsHarness()
+        {
+            _directory = Path.Combine(Path.GetTempPath(), "ReadAloudStartupTests_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(_directory);
+            Config = new ConfigService(
+                Path.Combine(_directory, "settings.json"),
+                Path.Combine(_directory, "legacy.json"));
+            Registry = new FakeRegistryAccessor();
+            Startup = new StartupService(Registry);
+            Registrar = new FakeHotkeyRegistrar();
+            Hotkeys = new HotkeyService(Registrar);
+            Themes = new FakeThemeService();
+            Main = new MainViewModel(Themes, Registrar);
+            ViewModel = new SettingsViewModel(Config, Hotkeys, Themes, Main, Startup);
+        }
+
+        public ConfigService Config { get; }
+
+        public FakeRegistryAccessor Registry { get; }
+
+        public StartupService Startup { get; }
+
+        public FakeHotkeyRegistrar Registrar { get; }
+
+        public HotkeyService Hotkeys { get; }
+
+        public FakeThemeService Themes { get; }
+
+        public MainViewModel Main { get; }
+
+        public SettingsViewModel ViewModel { get; }
+
+        public void Dispose()
+        {
+            try
+            {
+                Directory.Delete(_directory, recursive: true);
+            }
+            catch (IOException)
+            {
+            }
+        }
+    }
+
+    private sealed class FakeThemeService : IThemeService
+    {
+        public string CurrentTheme { get; private set; } = "aurora";
+
+        public void Apply(string theme) => CurrentTheme = theme == "orbit" ? "orbit" : "aurora";
+    }
+
+    private sealed class FakeHotkeyRegistrar : IHotkeyRegistrar
+    {
+        public event Action<string>? HotkeyPressed;
+
+        public List<HotkeyBinding> Registrations { get; } = new();
+
+        public bool TryRegister(HotkeyBinding binding)
+        {
+            Registrations.Add(binding);
+            return true;
+        }
+
+        public void UnregisterAll() => Registrations.Clear();
     }
 }

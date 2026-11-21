@@ -11,6 +11,7 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly ConfigService _config;
     private readonly HotkeyService _hotkeys;
     private readonly MainViewModel _main;
+    private readonly StartupService? _startup;
     private string? _recordingAction;
 
     private string _theme = "aurora";
@@ -39,11 +40,13 @@ public sealed class SettingsViewModel : ObservableObject
         ConfigService config,
         HotkeyService hotkeys,
         IThemeService themes,
-        MainViewModel main)
+        MainViewModel main,
+        StartupService? startup = null)
     {
         _config = config;
         _hotkeys = hotkeys;
         _main = main;
+        _startup = startup;
 
         var current = config.Load();
         _theme = current.Theme;
@@ -194,6 +197,11 @@ public sealed class SettingsViewModel : ObservableObject
         private set => SetProperty(ref _validationMessage, value);
     }
 
+    public string PrivacyDisclosure { get; } =
+        "Read Aloud is offline-first and sends no text or telemetry to any service. "
+        + "Auto-read observes only mouse release events while enabled; it records no keystrokes or mouse coordinates. "
+        + "Local history is stored only on this device and can be disabled or cleared at any time.";
+
     public bool IsVoiceCommandEditable => false;
 
     public void Save()
@@ -209,11 +217,14 @@ public sealed class SettingsViewModel : ObservableObject
         var config = _config.Load();
         ApplyTo(config);
         _config.Save(config);
+        ApplyStartupSettings();
         _main.ApplyTheme(config.Theme);
 
         var conflicts = _hotkeys.RegisterAll(config, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
         ValidationMessage = conflicts.Count == 0 ? "Settings saved." : string.Join(" ", conflicts);
     }
+
+    public void ApplyStartupSettings() => _startup?.SetStartWithWindows(StartWithWindows);
 
     public void BeginRecording(string action)
     {

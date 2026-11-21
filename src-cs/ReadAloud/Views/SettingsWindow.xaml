@@ -132,6 +132,10 @@
                         <CheckBox Content="Keep local read history" IsChecked="{Binding HistoryEnabled}" />
                         <TextBlock Text="History retention (days)" Margin="0,10,0,0" Foreground="{DynamicResource TextBrush}" />
                         <TextBox Margin="0,4,0,0" Text="{Binding HistoryRetentionDays, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Margin="0,10,0,0"
+                                   Text="{Binding PrivacyDisclosure}"
+                                   TextWrapping="Wrap"
+                                   Foreground="{DynamicResource MutedTextBrush}" />
                         <CheckBox Content="Show activity panel" Margin="0,10,0,0" IsChecked="{Binding ShowActivity}" />
                     </StackPanel>
                 </GroupBox>

@@ -23,6 +23,7 @@ public partial class App : System.Windows.Application
     private MainWindow? _window;
     private HotkeyService? _hotkeys;
     private Win32HotkeyRegistrar? _registrar;
+    private StartupService? _startup;
     private AutoReadService? _autoRead;
     private TrayIcon? _trayIcon;
 
@@ -40,6 +41,8 @@ public partial class App : System.Windows.Application
             Path.Combine(localAppData, "Programs", "ReadAloud", "config", "settings.json"));
 
         var config = _config.Load();
+        _startup = new StartupService(new RegistryAccessor());
+        _startup.SetStartWithWindows(config.StartWithWindows);
         _themes = new ThemeService(Resources);
         _themes.Apply(config.Theme);
 
@@ -173,7 +176,7 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        var viewModel = new SettingsViewModel(_config, _hotkeys, _themes, _main);
+        var viewModel = new SettingsViewModel(_config, _hotkeys, _themes, _main, _startup);
         var window = new SettingsWindow(viewModel) { Owner = _window };
         if (window.ShowDialog() == true)
         {
