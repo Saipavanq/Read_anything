@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows.Input;
 using ReadAloud.Models;
 using ReadAloud.Services;
@@ -12,7 +14,10 @@ public sealed class HomeViewModel : ObservableObject
     private readonly HotkeyService _hotkeys;
     private readonly Func<AppConfig> _configProvider;
     private readonly Action<AppConfig>? _saveConfig;
+    private readonly ISpeechEngine? _speech;
 
+    private IReadOnlyList<string> _voices = Array.Empty<string>();
+    private string _selectedVoice = string.Empty;
     private string _textInput = string.Empty;
     private string _status = "Ready";
     private bool _isListening;
@@ -25,15 +30,18 @@ public sealed class HomeViewModel : ObservableObject
         ActivityLog log,
         HotkeyService hotkeys,
         Func<AppConfig> configProvider,
-        Action<AppConfig>? saveConfig = null)
+        Action<AppConfig>? saveConfig = null,
+        ISpeechEngine? speech = null)
     {
         _coordinator = coordinator;
         _log = log;
         _hotkeys = hotkeys;
         _configProvider = configProvider;
         _saveConfig = saveConfig;
+        _speech = speech;
 
-        ListenCommand = new RelayCommand(_ => _ = RequestListenAsync(), _ => !IsListening);
+        // Reads are newest-wins: a newer request may supersede an in-flight read.
+        ListenCommand = new RelayCommand(_ => _ = RequestListenAsync());
         ClearCommand = new RelayCommand(_ => TextInput = string.Empty);
         CaptureMethods = Enum.GetValues<CaptureMethod>();
 
@@ -84,6 +92,29 @@ public sealed class HomeViewModel : ObservableObject
 
     public IReadOnlyList<CaptureMethod> CaptureMethods { get; }
 
+    public IReadOnlyList<string> Voices
+    {
+        get => _voices;
+        private set => SetProperty(ref _voices, value);
+    }
+
+    public string SelectedVoice
+    {
+        get => _selectedVoice;
+        set
+        {
+            if (!SetProperty(ref _selectedVoice, value))
+            {
+                return;
+            }
+
+            var config = _configProvider();
+            config.OfflineVoice = value;
+            _saveConfig?.Invoke(config);
+            _log.Add($"Voice changed to {value}.");
+        }
+    }
+
     public CaptureMethod SelectedCaptureMethod
     {
         get => _captureMethod;
@@ -118,6 +149,10 @@ public sealed class HomeViewModel : ObservableObject
     public void Refresh()
     {
         var config = _configProvider();
+        Voices = _speech is null
+            ? Array.Empty<string>()
+            : _speech.GetVoices().Select(voice => voice.Name).ToArray();
+        SetProperty(ref _selectedVoice, config.OfflineVoice, nameof(SelectedVoice));
         _captureMethod = config.CaptureMethod;
         RaisePropertyChanged(nameof(SelectedCaptureMethod));
         ShowActivity = config.ShowActivity;
@@ -143,11 +178,6 @@ public sealed class HomeViewModel : ObservableObject
 
     private async Task<bool> RunReadAsync(string? manualText)
     {
-        if (IsListening)
-        {
-            return false;
-        }
-
         IsListening = true;
         Status = "Reading…";
         var started = false;

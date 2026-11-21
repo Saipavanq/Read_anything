@@ -28,5 +28,9 @@ public interface ISpeechSynthesizer
 
     void Stop();
 
+    void Pause() { }
+
+    void Resume() { }
+
     IReadOnlyList<SyntheticVoiceDescriptor> GetVoices();
 }

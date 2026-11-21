@@ -83,6 +83,30 @@ public sealed class SapiSpeechEngine : ISpeechEngine
         }
     }
 
+    public void Pause()
+    {
+        try
+        {
+            _synthesizer.Pause();
+        }
+        catch (Exception)
+        {
+            // Speech failures must never reach the UI layer.
+        }
+    }
+
+    public void Resume()
+    {
+        try
+        {
+            _synthesizer.Resume();
+        }
+        catch (Exception)
+        {
+            // Speech failures must never reach the UI layer.
+        }
+    }
+
     private static VoiceInfo MapVoice(SyntheticVoiceDescriptor descriptor)
         => new(
             descriptor.Name,

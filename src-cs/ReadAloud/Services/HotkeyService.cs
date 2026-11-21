@@ -156,7 +156,7 @@ public sealed class HotkeyService
     private static bool IsOwnedByOther(ISet<string> ownedByOthers, string display)
         => ownedByOthers.Any(value => string.Equals(value, display, StringComparison.OrdinalIgnoreCase));
 
-    private static bool IsModifierKey(Key key) => key is
+    public static bool IsModifierKey(Key key) => key is
         Key.LeftCtrl or Key.RightCtrl or
         Key.LeftShift or Key.RightShift or
         Key.LeftAlt or Key.RightAlt or

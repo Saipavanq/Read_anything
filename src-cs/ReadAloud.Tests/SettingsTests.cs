@@ -36,6 +36,18 @@ public sealed class SettingsTests : IDisposable
     }
 
     [Fact]
+    public void ThemeToggle_AppliesAndPersistsImmediately()
+    {
+        var h = new Harness(_root);
+
+        h.ViewModel.Theme = "orbit";
+
+        Assert.Equal("orbit", h.Config.Load().Theme);
+        Assert.Equal("orbit", h.Themes.CurrentTheme);
+        Assert.Equal("orbit", h.Main.Theme);
+    }
+
+    [Fact]
     public void FinishRecording_UpdatesReadHotkey()
     {
         var h = new Harness(_root);

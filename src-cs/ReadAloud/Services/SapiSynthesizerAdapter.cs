@@ -40,6 +40,30 @@ internal sealed class SapiSynthesizerAdapter : ISpeechSynthesizer
 
     public void Stop() => _synthesizer.SpeakAsyncCancelAll();
 
+    public void Pause()
+    {
+        try
+        {
+            _synthesizer.Pause();
+        }
+        catch (InvalidOperationException)
+        {
+            // SAPI rejects Pause when no speech is active; it is safe to ignore.
+        }
+    }
+
+    public void Resume()
+    {
+        try
+        {
+            _synthesizer.Resume();
+        }
+        catch (InvalidOperationException)
+        {
+            // SAPI rejects Resume when speech is not paused; it is safe to ignore.
+        }
+    }
+
     public IReadOnlyList<SyntheticVoiceDescriptor> GetVoices()
     {
         var installed = _synthesizer.GetInstalledVoices();

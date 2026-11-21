@@ -23,15 +23,19 @@ public sealed class TrayService
         _openSettings = openSettings ?? throw new ArgumentNullException(nameof(openSettings));
         _quit = quit ?? throw new ArgumentNullException(nameof(quit));
 
-        MenuItems = new[]
+        var actions = new (string Label, Action Invoke)[]
         {
-            "Show window",
-            "Read selected text",
-            "Stop speaking",
-            "Settings…",
-            "Quit"
+            ("Show window", ShowWindow),
+            ("Read selected text", ReadSelection),
+            ("Stop speaking", Stop),
+            ("Settings…", OpenSettings),
+            ("Quit", Quit)
         };
+        MenuActions = actions;
+        MenuItems = Array.ConvertAll(actions, action => action.Label);
     }
+
+    public IReadOnlyList<(string Label, Action Invoke)> MenuActions { get; }
 
     public IReadOnlyList<string> MenuItems { get; }
 

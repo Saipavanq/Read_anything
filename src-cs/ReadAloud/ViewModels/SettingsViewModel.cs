@@ -12,6 +12,7 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly HotkeyService _hotkeys;
     private readonly MainViewModel _main;
     private readonly StartupService? _startup;
+    private readonly Action<Action>? _dispatcher;
     private string? _recordingAction;
 
     private string _theme = "aurora";
@@ -41,12 +42,14 @@ public sealed class SettingsViewModel : ObservableObject
         HotkeyService hotkeys,
         IThemeService themes,
         MainViewModel main,
-        StartupService? startup = null)
+        StartupService? startup = null,
+        Action<Action>? dispatcher = null)
     {
         _config = config;
         _hotkeys = hotkeys;
         _main = main;
         _startup = startup;
+        _dispatcher = dispatcher;
 
         var current = config.Load();
         _theme = current.Theme;
@@ -74,7 +77,33 @@ public sealed class SettingsViewModel : ObservableObject
     public string Theme
     {
         get => _theme;
-        set => SetProperty(ref _theme, value);
+        set
+        {
+            if (!SetProperty(ref _theme, value))
+            {
+                return;
+            }
+
+            // The theme decision wins immediately: persist it now and apply it
+            // on the UI dispatcher, not only when the Settings dialog is saved.
+            var config = _config.Load();
+            config.Theme = value;
+            _config.Save(config);
+
+            void Apply()
+            {
+                _main.ApplyTheme(value);
+            }
+
+            if (_dispatcher is null)
+            {
+                Apply();
+            }
+            else
+            {
+                _dispatcher(Apply);
+            }
+        }
     }
 
     public string HotkeyRead

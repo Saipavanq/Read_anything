@@ -18,17 +18,20 @@ public sealed class SelectionService
     private readonly IKeyboardSender _keyboard;
     private readonly IUiaSelectionReader _uia;
     private readonly IClock _clock;
+    private readonly Func<bool> _restoreClipboard;
 
     public SelectionService(
         IClipboard clipboard,
         IKeyboardSender keyboard,
         IUiaSelectionReader uia,
-        IClock clock)
+        IClock clock,
+        Func<bool>? restoreClipboard = null)
     {
         _clipboard = clipboard;
         _keyboard = keyboard;
         _uia = uia;
         _clock = clock;
+        _restoreClipboard = restoreClipboard ?? (() => true);
     }
 
     public async Task<CaptureResult> CaptureAsync(CaptureMethod method)
@@ -114,13 +117,16 @@ public sealed class SelectionService
             }
         }
 
-        try
+        if (_restoreClipboard())
         {
-            _clipboard.Restore(snapshot);
-        }
-        catch (Exception ex)
-        {
-            notes.Add($"restore failed: {ex.Message}");
+            try
+            {
+                _clipboard.Restore(snapshot);
+            }
+            catch (Exception ex)
+            {
+                notes.Add($"restore failed: {ex.Message}");
+            }
         }
 
         if (text is not null)

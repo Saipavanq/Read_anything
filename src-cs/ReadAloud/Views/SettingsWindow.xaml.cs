@@ -53,7 +53,7 @@ public partial class SettingsWindow : Window
 
         var pressed = Keyboard.Modifiers;
         if (!HotkeyService.TryNormalizeKeyEvent(e.Key, e.SystemKey, pressed, out var modifiers, out var key)
-            || IsModifierKey(key))
+            || HotkeyService.IsModifierKey(key))
         {
             return;
         }
@@ -67,10 +67,4 @@ public partial class SettingsWindow : Window
         _recordingAction = action;
         _viewModel.BeginRecording(action);
     }
-
-    private static bool IsModifierKey(Key key) => key is
-        Key.LeftCtrl or Key.RightCtrl or
-        Key.LeftShift or Key.RightShift or
-        Key.LeftAlt or Key.RightAlt or
-        Key.LWin or Key.RWin;
 }

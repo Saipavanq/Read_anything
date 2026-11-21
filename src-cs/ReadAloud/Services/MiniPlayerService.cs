@@ -7,11 +7,16 @@ public sealed class MiniPlayerService
 {
     private readonly IMiniPlayerView _view;
     private readonly Func<AppConfig> _configProvider;
+    private readonly Action<AppConfig>? _saveConfig;
 
-    public MiniPlayerService(IMiniPlayerView view, Func<AppConfig> configProvider)
+    public MiniPlayerService(
+        IMiniPlayerView view,
+        Func<AppConfig> configProvider,
+        Action<AppConfig>? saveConfig = null)
     {
         _view = view;
         _configProvider = configProvider;
+        _saveConfig = saveConfig;
         _view.ExpandRequested += OnExpandRequested;
         _view.CloseRequested += OnCloseRequested;
     }
@@ -42,7 +47,9 @@ public sealed class MiniPlayerService
     public void SetAlwaysOnTop(bool value)
     {
         _view.Topmost = value;
-        _configProvider().MiniPlayerAlwaysOnTop = value;
+        var config = _configProvider();
+        config.MiniPlayerAlwaysOnTop = value;
+        _saveConfig?.Invoke(config);
     }
 
     public void UpdateState(PlaybackState state)

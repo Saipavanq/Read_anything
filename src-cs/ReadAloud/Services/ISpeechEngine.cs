@@ -17,4 +17,8 @@ public interface ISpeechEngine
     void Speak(string text, VoiceOptions options);
 
     void Stop();
+
+    void Pause() { }
+
+    void Resume() { }
 }

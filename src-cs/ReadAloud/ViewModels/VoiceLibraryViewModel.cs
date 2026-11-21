@@ -110,9 +110,9 @@ public sealed class VoiceLibraryViewModel : ObservableObject
             return;
         }
 
+        // Preview is audition-only: it must not silently change the configured
+        // voice. The explicit voice selector owns that persisted decision.
         var config = _config.Load();
-        config.OfflineVoice = card.Description;
-        _config.Save(config);
         SelectedVoice = card;
 
         _speech.Speak(

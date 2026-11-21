@@ -32,10 +32,68 @@ public sealed class PlaybackTests
 
         h.Playback.Pause();
         Assert.Equal(PlaybackStatus.Paused, h.Playback.State.Status);
+        Assert.Equal(1, h.Speech.PauseCalls);
 
         h.Playback.Resume();
         Assert.Equal(PlaybackStatus.Playing, h.Playback.State.Status);
+        Assert.Equal(1, h.Speech.ResumeCalls);
+        Assert.Equal(1, h.Speech.SpeakCalls);
+    }
+
+    [Fact]
+    public async Task NewRead_SupersedesInFlightSpeech()
+    {
+        var h = new Harness();
+        h.Speech.AutoComplete = false;
+        await h.Playback.PlayAsync("First read.", new VoiceOptions("Voice", 0, 100));
+
+        await h.Playback.PlayAsync("Second read.", new VoiceOptions("Voice", 0, 100));
+
+        Assert.Equal("Second read.", h.Speech.LastText);
+        Assert.Equal(1, h.Speech.StopCalls);
         Assert.Equal(2, h.Speech.SpeakCalls);
+        Assert.Equal(PlaybackStatus.Playing, h.Playback.State.Status);
+    }
+
+    [Fact]
+    public async Task CompletedRead_RecordsMeasuredDuration()
+    {
+        var h = new Harness();
+        h.Speech.AutoComplete = false;
+
+        await h.Playback.PlayAsync("One two three.", new VoiceOptions("Voice", 0, 100));
+        await Task.Delay(15);
+        h.Speech.Complete();
+
+        Assert.True(h.Playback.State.Elapsed > TimeSpan.Zero);
+        Assert.Equal(PlaybackStatus.Completed, h.Playback.State.Status);
+    }
+
+    [Fact]
+    public void EstimateRemaining_UsesCurrentSpeed()
+    {
+        var slow = new Harness();
+        slow.Speech.AutoComplete = false;
+        var fast = new Harness();
+        fast.Speech.AutoComplete = false;
+        fast.Config.PlaybackSpeed = 2.0;
+
+        _ = slow.Playback.PlayAsync("One two three four five six seven eight.", new VoiceOptions("Voice", 0, 100));
+        _ = fast.Playback.PlayAsync("One two three four five six seven eight.", new VoiceOptions("Voice", 0, 100));
+
+        Assert.True(fast.Playback.State.EstimatedRemaining < slow.Playback.State.EstimatedRemaining);
+    }
+
+    [Fact]
+    public async Task Progress_AdvancesCurrentSentence()
+    {
+        var h = new Harness();
+        h.Speech.AutoComplete = false;
+        await h.Playback.PlayAsync("First sentence. Second sentence. Third sentence.", new VoiceOptions("Voice", 0, 100));
+
+        h.Speech.RaiseProgress("First sentence. ".Length + 1, 1);
+
+        Assert.Equal(1, h.Playback.State.CurrentSentenceIndex);
     }
 
     [Fact]
@@ -158,6 +216,10 @@ public sealed class PlaybackTests
 
         public int StopCalls { get; private set; }
 
+        public int PauseCalls { get; private set; }
+
+        public int ResumeCalls { get; private set; }
+
         public IReadOnlyList<VoiceInfo> GetVoices() => Array.Empty<VoiceInfo>();
 
         public void Speak(string text, VoiceOptions options)
@@ -177,6 +239,16 @@ public sealed class PlaybackTests
         {
             StopCalls++;
             IsSpeaking = false;
+        }
+
+        public void Pause() => PauseCalls++;
+
+        public void Resume() => ResumeCalls++;
+
+        public void Complete()
+        {
+            IsSpeaking = false;
+            SpeakCompleted?.Invoke();
         }
 
         public void RaiseProgress(int position, int count)

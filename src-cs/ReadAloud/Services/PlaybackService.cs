@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -11,12 +12,14 @@ public sealed class PlaybackService
 {
     private static readonly Regex SentenceBoundary = new(@"(?<=[.!?])\s+", RegexOptions.Compiled);
     private static readonly TimeSpan Zero = TimeSpan.Zero;
+    private const double BaselineWordsPerSecond = 2.5;
 
     private readonly object _gate = new();
     private readonly ISpeechEngine _speech;
     private readonly Func<AppConfig> _configProvider;
     private readonly Action<AppConfig>? _saveConfig;
     private readonly IHistorySink? _history;
+    private readonly Stopwatch _stopwatch = new();
 
     private PlaybackState _state = new(
         string.Empty,
@@ -37,6 +40,9 @@ public sealed class PlaybackService
     private Action<int, int>? _progressHandler;
     private HistoryEntry? _activeEntry;
     private long _generation;
+    private bool _speechActive;
+    private bool _speechStarted;
+    private bool _completionInvoked;
 
     public PlaybackService(
         ISpeechEngine speech,
@@ -118,8 +124,10 @@ public sealed class PlaybackService
             return;
         }
 
-        Supersede();
-        _speech.Stop();
+        // Pause the in-flight synthesis rather than stopping and restarting it,
+        // so playback resumes at the exact word where it was interrupted.
+        _speech.Pause();
+        _stopwatch.Stop();
         SetState(_state with { Status = PlaybackStatus.Paused });
     }
 
@@ -130,21 +138,18 @@ public sealed class PlaybackService
             return;
         }
 
-        Start(
-            _lastText,
-            _lastSentences,
-            _lastIndex,
-            _lastOptions,
-            _state.Speed,
-            _state.Source,
-            _state.CaptureMethod,
-            continueHistoryEntry: true);
+        _speech.Resume();
+        _stopwatch.Start();
+        SetState(_state with { Status = PlaybackStatus.Playing });
     }
 
     public void Stop()
     {
-        FinalizeActive("stopped", State.Elapsed);
+        FinalizeActive("stopped", MeasuredElapsed());
         Supersede();
+
+        // An explicit Stop always cancels synthesis, even when our own active
+        // flag is false (for example while a paused read is in progress).
         _speech.Stop();
         SetState(new PlaybackState(
             string.Empty,
@@ -189,7 +194,12 @@ public sealed class PlaybackService
         config.PlaybackSpeed = clamped;
         config.SapiRate = SpeedToRate(clamped);
         _saveConfig?.Invoke(config);
-        SetState(_state with { Speed = clamped });
+
+        var remaining = _state.Status is PlaybackStatus.Playing or PlaybackStatus.Paused
+            ? TimeSpan.FromSeconds(
+                EstimateDuration(_state.Text, clamped).TotalSeconds * (1 - _state.Progress))
+            : Zero;
+        SetState(_state with { Speed = clamped, EstimatedRemaining = remaining });
     }
 
     private void StartFromSentence(int index)
@@ -217,15 +227,23 @@ public sealed class PlaybackService
         CaptureMethod captureMethod,
         bool continueHistoryEntry)
     {
+        var hadActiveSpeech = _speechActive;
         if (!continueHistoryEntry)
         {
-            FinalizeActive("interrupted", State.Elapsed);
+            FinalizeActive("interrupted", MeasuredElapsed());
         }
 
+        // A new read, skip or replay supersedes whatever is currently speaking.
+        // Cancelling synthesis here is what makes newest-read-wins real instead
+        // of merely dropping events from the old read.
         Supersede();
+        if (hadActiveSpeech)
+        {
+            _speech.Stop();
+        }
 
-        var generation = Interlocked.Increment(ref _generation);
-        var total = EstimateDuration(text);
+        var generation = Volatile.Read(ref _generation);
+        var total = EstimateDuration(text, speed);
         var config = _configProvider();
 
         SetState(new PlaybackState(
@@ -258,17 +276,20 @@ public sealed class PlaybackService
 
         void OnCompleted()
         {
-            if (generation != Volatile.Read(ref _generation))
+            if (generation != Volatile.Read(ref _generation) || _completionInvoked)
             {
                 return;
             }
 
+            _completionInvoked = true;
+            var elapsed = MeasuredElapsed();
+            _speechActive = false;
             Detach();
-            FinalizeActive("completed", total);
+            FinalizeActive("completed", elapsed);
             SetState(_state with
             {
                 Status = PlaybackStatus.Completed,
-                Elapsed = total,
+                Elapsed = elapsed,
                 EstimatedRemaining = Zero,
                 Progress = 1
             });
@@ -284,6 +305,7 @@ public sealed class PlaybackService
             var fraction = Math.Clamp((position + count) / (double)Math.Max(1, text.Length), 0, 1);
             SetState(_state with
             {
+                CurrentSentenceIndex = ResolveSentenceIndex(text, sentences, index, position),
                 Elapsed = TimeSpan.FromSeconds(total.TotalSeconds * fraction),
                 EstimatedRemaining = TimeSpan.FromSeconds(total.TotalSeconds * (1 - fraction)),
                 Progress = fraction
@@ -292,6 +314,7 @@ public sealed class PlaybackService
 
         _completedHandler = OnCompleted;
         _progressHandler = OnProgress;
+        _completionInvoked = false;
         _speech.SpeakCompleted += OnCompleted;
         _speech.SpeakProgress += OnProgress;
 
@@ -299,6 +322,10 @@ public sealed class PlaybackService
         _lastSentences = sentences;
         _lastIndex = index;
         _lastOptions = options;
+
+        _stopwatch.Restart();
+        _speechStarted = true;
+        _speechActive = true;
 
         try
         {
@@ -310,8 +337,48 @@ public sealed class PlaybackService
         }
         catch (Exception)
         {
+            _speechStarted = false;
             OnCompleted();
         }
+    }
+
+    private static int ResolveSentenceIndex(
+        string text,
+        IReadOnlyList<string> sentences,
+        int startIndex,
+        int position)
+    {
+        if (sentences.Count == 0)
+        {
+            return 0;
+        }
+
+        var localSentences = SplitSentences(text);
+        var cumulative = 0;
+        for (var i = 0; i < localSentences.Count; i++)
+        {
+            cumulative += localSentences[i].Length;
+            if (position < cumulative)
+            {
+                return Math.Min(startIndex + i, sentences.Count - 1);
+            }
+
+            cumulative++; // the whitespace separator between sentences
+        }
+
+        var last = startIndex + localSentences.Count - 1;
+        return Math.Clamp(last, 0, sentences.Count - 1);
+    }
+
+    private TimeSpan MeasuredElapsed()
+    {
+        if (!_speechStarted)
+        {
+            return Zero;
+        }
+
+        _stopwatch.Stop();
+        return _stopwatch.Elapsed;
     }
 
     private void FinalizeActive(string status, TimeSpan duration)
@@ -330,6 +397,10 @@ public sealed class PlaybackService
     {
         Interlocked.Increment(ref _generation);
         Detach();
+        _speechActive = false;
+        _speechStarted = false;
+        _stopwatch.Stop();
+        _stopwatch.Reset();
     }
 
     private void Detach()
@@ -357,9 +428,10 @@ public sealed class PlaybackService
         StateChanged?.Invoke(state);
     }
 
-    private static TimeSpan EstimateDuration(string text)
+    private static TimeSpan EstimateDuration(string text, double speed)
     {
         var words = text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length;
-        return TimeSpan.FromSeconds(Math.Max(1, words / 2.5));
+        var wordsPerSecond = BaselineWordsPerSecond * Math.Clamp(speed, 0.5, 3.0);
+        return TimeSpan.FromSeconds(Math.Max(1, words / wordsPerSecond));
     }
 }

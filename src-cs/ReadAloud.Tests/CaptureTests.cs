@@ -122,6 +122,19 @@ public sealed class CaptureTests
         Assert.Contains("clipboard unchanged; UIA no selection", result.Diagnostic, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task ClipboardRestoreDisabled_DoesNotRestoreClipboard()
+    {
+        var h = new Harness();
+        h.Keyboard.OnCtrlC = () => h.Clipboard.Text = "Selected text";
+        var service = new SelectionService(h.Clipboard, h.Keyboard, h.Uia, h.Clock, () => false);
+
+        var result = await service.CaptureAsync(CaptureMethod.ClipboardFirst);
+
+        Assert.Equal("Selected text", result.Text);
+        Assert.Equal(0, h.Clipboard.RestoreCalls);
+    }
+
     private sealed class Harness
     {
         public List<string> Events { get; } = new();

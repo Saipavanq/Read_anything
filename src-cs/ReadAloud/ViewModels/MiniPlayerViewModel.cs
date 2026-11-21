@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Windows.Input;
 using ReadAloud.Models;
 using ReadAloud.Services;
@@ -7,14 +8,22 @@ namespace ReadAloud.ViewModels;
 
 public sealed class MiniPlayerViewModel : ObservableObject
 {
+    public static readonly IReadOnlyList<double> SpeedOptions =
+        new[] { 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0 };
+
     private readonly PlaybackService _playback;
     private readonly MiniPlayerService _miniPlayer;
+    private readonly Action<Action>? _dispatcher;
     private PlaybackState _state;
 
-    public MiniPlayerViewModel(PlaybackService playback, MiniPlayerService miniPlayer)
+    public MiniPlayerViewModel(
+        PlaybackService playback,
+        MiniPlayerService miniPlayer,
+        Action<Action>? dispatcher = null)
     {
         _playback = playback;
         _miniPlayer = miniPlayer;
+        _dispatcher = dispatcher;
         _state = playback.State;
         playback.StateChanged += UpdateState;
 
@@ -50,6 +59,12 @@ public sealed class MiniPlayerViewModel : ObservableObject
 
     public string RemainingText => FormatTime(_state.EstimatedRemaining);
 
+    public double SelectedSpeed
+    {
+        get => _state.Speed;
+        set => _playback.SetSpeed(value);
+    }
+
     public ICommand PauseResumeCommand { get; }
 
     public ICommand StopCommand { get; }
@@ -76,13 +91,26 @@ public sealed class MiniPlayerViewModel : ObservableObject
 
     public void UpdateState(PlaybackState state)
     {
-        State = state;
-        RaisePropertyChanged(nameof(StatusText));
-        RaisePropertyChanged(nameof(PauseResumeLabel));
-        RaisePropertyChanged(nameof(CanPauseResume));
-        RaisePropertyChanged(nameof(ProgressPercent));
-        RaisePropertyChanged(nameof(ElapsedText));
-        RaisePropertyChanged(nameof(RemainingText));
+        void Apply()
+        {
+            State = state;
+            RaisePropertyChanged(nameof(StatusText));
+            RaisePropertyChanged(nameof(PauseResumeLabel));
+            RaisePropertyChanged(nameof(CanPauseResume));
+            RaisePropertyChanged(nameof(ProgressPercent));
+            RaisePropertyChanged(nameof(ElapsedText));
+            RaisePropertyChanged(nameof(RemainingText));
+            RaisePropertyChanged(nameof(SelectedSpeed));
+        }
+
+        if (_dispatcher is null)
+        {
+            Apply();
+        }
+        else
+        {
+            _dispatcher(Apply);
+        }
     }
 
     private static string FormatTime(TimeSpan value)

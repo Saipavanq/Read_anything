@@ -74,7 +74,7 @@ public sealed class VoiceLibraryTests
         Assert.Equal("Zira description", h.Speech.LastOptions?.VoiceName);
         Assert.Equal(10, h.Speech.LastOptions?.Rate);
         Assert.Equal(80, h.Speech.LastOptions?.Volume);
-        Assert.Equal("Zira description", h.Config.Load().OfflineVoice);
+        Assert.Equal(string.Empty, h.Config.Load().OfflineVoice);
     }
 
     [Fact]

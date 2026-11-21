@@ -71,6 +71,18 @@ public sealed class HomeTests
         Assert.Equal(1, h.SaveCount);
     }
 
+    [Fact]
+    public void VoiceSelector_PersistsOfflineVoice()
+    {
+        var h = new Harness();
+
+        Assert.Contains("Zira", h.Home.Voices);
+        h.Home.SelectedVoice = "Zira";
+
+        Assert.Equal("Zira", h.Config.OfflineVoice);
+        Assert.Equal(1, h.SaveCount);
+    }
+
     private sealed class Harness
     {
         public Harness()
@@ -84,7 +96,8 @@ public sealed class HomeTests
             Hotkeys = new HotkeyService(new FakeHotkeyRegistrar());
             var playback = new PlaybackService(Speech, () => Config);
             var coordinator = new ReadCoordinator(selection, playback, Log, () => Config);
-            Home = new HomeViewModel(coordinator, Log, Hotkeys, () => Config, _ => SaveCount++);
+            Speech.Voices.Add(new VoiceInfo("Zira", "Zira", "en-US", "Female", true));
+            Home = new HomeViewModel(coordinator, Log, Hotkeys, () => Config, _ => SaveCount++, Speech);
         }
 
         public AppConfig Config { get; }
@@ -156,7 +169,9 @@ public sealed class HomeTests
 
         public bool IsSpeaking => false;
 
-        public IReadOnlyList<VoiceInfo> GetVoices() => Array.Empty<VoiceInfo>();
+        public List<VoiceInfo> Voices { get; } = new();
+
+        public IReadOnlyList<VoiceInfo> GetVoices() => Voices;
 
         public void Speak(string text, VoiceOptions options) => Spoken.Add(text);
 

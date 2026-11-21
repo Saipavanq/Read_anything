@@ -39,11 +39,10 @@ public partial class App : System.Windows.Application
         WinFormsApplication.EnableVisualStyles();
         WinFormsApplication.SetCompatibleTextRenderingDefault(false);
 
-        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         var roamingAppData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         _config = new ConfigService(
             Path.Combine(roamingAppData, "Read Aloud", "settings.json"),
-            Path.Combine(localAppData, "Programs", "ReadAloud", "config", "settings.json"));
+            Path.Combine(AppContext.BaseDirectory, "config", "settings.json"));
 
         var config = _config.Load();
         _startup = new StartupService(new RegistryAccessor());
@@ -59,12 +58,16 @@ public partial class App : System.Windows.Application
             new ClipboardService(),
             new KeyboardSender(),
             new UiaSelectionReader(),
-            new SystemClock());
+            new SystemClock(),
+            () => _config!.Load().ClipboardRestore);
         var speech = new SapiSpeechEngine();
         _playback = new PlaybackService(speech, () => _config!.Load(), _config.Save, _history);
         _miniWindow = new MiniPlayerWindow();
-        _miniPlayer = new MiniPlayerService(_miniWindow, () => _config!.Load());
-        _miniViewModel = new MiniPlayerViewModel(_playback, _miniPlayer);
+        _miniPlayer = new MiniPlayerService(_miniWindow, () => _config!.Load(), _config.Save);
+        _miniViewModel = new MiniPlayerViewModel(
+            _playback,
+            _miniPlayer,
+            action => Dispatcher.Invoke(action));
         _miniWindow.DataContext = _miniViewModel;
         _miniPlayer.ExpandRequested += ShowMainWindow;
         _playback.StateChanged += state => Dispatcher.Invoke(() => _miniPlayer?.UpdateState(state));
@@ -81,7 +84,13 @@ public partial class App : System.Windows.Application
 
         _registrar.HotkeyPressed += OnHotkeyPressed;
 
-        _home = new HomeViewModel(coordinator, _log, _hotkeys, () => _config!.Load(), _config.Save);
+        _home = new HomeViewModel(
+            coordinator,
+            _log,
+            _hotkeys,
+            () => _config!.Load(),
+            _config.Save,
+            speech);
         _selectionReadFlow = new SelectionReadFlow(
             () => _home!.RequestReadSelectionAsync(),
             () => _miniPlayer?.ShowForSelectionRead());
@@ -119,6 +128,7 @@ public partial class App : System.Windows.Application
         _autoRead = new AutoReadService(
             new MouseUpAutoReadTrigger(
                 foregroundPolicy.IsOwnWindowForeground,
+                hook: new Win32MouseHook(diagnostic: message => _log!.Add(message)),
                 diagnostic: message => _log!.Add(message)),
             coordinator,
             () => _config!.Load(),
@@ -191,7 +201,13 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        var viewModel = new SettingsViewModel(_config, _hotkeys, _themes, _main, _startup);
+        var viewModel = new SettingsViewModel(
+            _config,
+            _hotkeys,
+            _themes,
+            _main,
+            _startup,
+            action => Dispatcher.Invoke(action));
         var window = new SettingsWindow(viewModel) { Owner = _window };
         if (window.ShowDialog() == true)
         {

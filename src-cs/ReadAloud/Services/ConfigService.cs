@@ -121,8 +121,9 @@ public sealed class ConfigService
             root = document.RootElement.Clone();
             return true;
         }
-        catch (JsonException)
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
+            // A corrupt or unreadable file must never block startup.
             return false;
         }
     }

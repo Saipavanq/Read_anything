@@ -168,6 +168,33 @@ public sealed class MiniPlayerTests
     }
 
     [Fact]
+    public void UpdateState_AppliesOnDispatcher()
+    {
+        var h = new Harness();
+        Action? queued = null;
+        var viewModel = new MiniPlayerViewModel(h.Playback, h.Service, action => queued = action);
+        var state = State(PlaybackStatus.Completed);
+
+        viewModel.UpdateState(state);
+
+        Assert.NotNull(queued);
+        Assert.NotSame(state, viewModel.State);
+        queued!();
+        Assert.Same(state, viewModel.State);
+    }
+
+    [Fact]
+    public void ViewModel_SelectedSpeed_ChangesPlaybackSpeed()
+    {
+        var h = new Harness();
+
+        h.ViewModel.SelectedSpeed = 2.0;
+
+        Assert.Equal(2.0, h.Config.PlaybackSpeed);
+        Assert.Equal(2.0, h.ViewModel.SelectedSpeed);
+    }
+
+    [Fact]
     public void ProgressBarBindings_AreOneWay()
     {
         var expected = "Value=\"{Binding ProgressPercent, Mode=OneWay}\"";

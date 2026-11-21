@@ -3,8 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Read Aloud — Now playing"
         Width="430"
-        Height="186"
-        MinHeight="150"
+        Height="216"
+        MinHeight="190"
         ResizeMode="NoResize"
         WindowStyle="ToolWindow"
         ShowInTaskbar="False"
@@ -63,6 +63,19 @@
                            Text="{Binding RemainingText}"
                            FontSize="11"
                            Foreground="{DynamicResource MutedTextBrush}" />
+            </DockPanel>
+
+            <DockPanel Margin="0,0,0,10">
+                <TextBlock Text="Speed"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0"
+                           FontSize="11"
+                           Foreground="{DynamicResource MutedTextBrush}" />
+                <ComboBox ItemsSource="{Binding SpeedOptions}"
+                          SelectedItem="{Binding SelectedSpeed}"
+                          AutomationProperties.Name="Playback speed"
+                          MinWidth="90"
+                          HorizontalAlignment="Right" />
             </DockPanel>
 
             <StackPanel Orientation="Horizontal">

@@ -16,10 +16,10 @@ internal sealed class TrayIcon : IDisposable
         _tray = tray ?? throw new ArgumentNullException(nameof(tray));
         _menu = new ContextMenuStrip();
 
-        for (var index = 0; index < tray.MenuItems.Count; index++)
+        foreach (var (label, invoke) in tray.MenuActions)
         {
-            var item = new ToolStripMenuItem(tray.MenuItems[index]);
-            item.Click += (_, _) => Invoke(index);
+            var item = new ToolStripMenuItem(label);
+            item.Click += (_, _) => invoke();
             _menu.Items.Add(item);
         }
 
@@ -44,27 +44,5 @@ internal sealed class TrayIcon : IDisposable
         _notifyIcon.Dispose();
         _menu.Dispose();
         _disposed = true;
-    }
-
-    private void Invoke(int index)
-    {
-        switch (index)
-        {
-            case 0:
-                _tray.ShowWindow();
-                break;
-            case 1:
-                _tray.ReadSelection();
-                break;
-            case 2:
-                _tray.Stop();
-                break;
-            case 3:
-                _tray.OpenSettings();
-                break;
-            case 4:
-                _tray.Quit();
-                break;
-        }
     }
 }
