@@ -77,6 +77,8 @@ public sealed class HotkeyService
         return true;
     }
 
+    public bool IsValid(string display) => TryParse(display, out _, out _);
+
     public void BeginRecording()
     {
         _registrar.UnregisterAll();

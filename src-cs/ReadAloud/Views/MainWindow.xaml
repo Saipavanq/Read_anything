@@ -60,11 +60,13 @@
                     </Button.Style>
                 </Button>
 
-                <Button Content="Settings"
+                <Button x:Name="SettingsButton"
+                        Content="Settings"
                         Height="40"
                         Margin="0,0,0,8"
                         HorizontalContentAlignment="Left"
-                        Padding="14,0" />
+                        Padding="14,0"
+                        Click="SettingsButton_Click" />
             </StackPanel>
         </Border>
 
