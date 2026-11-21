@@ -106,7 +106,8 @@ public sealed class ReadCoordinatorTests
             Selection = new SelectionService(Clipboard, Keyboard, Uia, Clock);
             Speech = new FakeSpeechEngine();
             Log = new ActivityLog();
-            Coordinator = new ReadCoordinator(Selection, Speech, Log, () => Config);
+            Playback = new PlaybackService(Speech, () => Config);
+            Coordinator = new ReadCoordinator(Selection, Playback, Log, () => Config);
         }
 
         public AppConfig Config { get; } = new();
@@ -122,6 +123,8 @@ public sealed class ReadCoordinatorTests
         public SelectionService Selection { get; }
 
         public FakeSpeechEngine Speech { get; }
+
+        public PlaybackService Playback { get; }
 
         public ActivityLog Log { get; }
 
@@ -197,6 +200,10 @@ public sealed class ReadCoordinatorTests
 
     private sealed class FakeSpeechEngine : ISpeechEngine
     {
+        public event Action? SpeakCompleted;
+
+        public event Action<int, int>? SpeakProgress;
+
         public List<string> Spoken { get; } = new();
 
         public int StopCalls { get; private set; }

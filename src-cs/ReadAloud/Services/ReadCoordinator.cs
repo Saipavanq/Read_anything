@@ -9,7 +9,7 @@ public sealed class ReadCoordinator
 {
     private readonly object _gate = new();
     private readonly SelectionService _selection;
-    private readonly ISpeechEngine _speech;
+    private readonly PlaybackService _playback;
     private readonly ActivityLog _log;
     private readonly Func<AppConfig> _configProvider;
     private readonly HashSet<long> _active = new();
@@ -17,12 +17,12 @@ public sealed class ReadCoordinator
 
     public ReadCoordinator(
         SelectionService selection,
-        ISpeechEngine speech,
+        PlaybackService playback,
         ActivityLog log,
         Func<AppConfig> configProvider)
     {
         _selection = selection;
-        _speech = speech;
+        _playback = playback;
         _log = log;
         _configProvider = configProvider;
     }
@@ -85,7 +85,7 @@ public sealed class ReadCoordinator
             }
 
             _log.Add($"Reading {text.Length} characters from {source}.");
-            _speech.Speak(text, VoiceOptions.FromConfig(config));
+            await _playback.PlayAsync(text, VoiceOptions.FromConfig(config));
         }
         finally
         {
@@ -104,7 +104,7 @@ public sealed class ReadCoordinator
             _active.Clear();
         }
 
-        _speech.Stop();
+        _playback.Stop();
         _log.Add("Stopped speaking and cleared pending reads.");
     }
 

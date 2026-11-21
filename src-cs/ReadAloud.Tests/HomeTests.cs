@@ -82,7 +82,8 @@ public sealed class HomeTests
             Log = new ActivityLog();
             var selection = new SelectionService(Clipboard, Keyboard, new FakeUiaSelectionReader(), new FakeClock());
             Hotkeys = new HotkeyService(new FakeHotkeyRegistrar());
-            var coordinator = new ReadCoordinator(selection, Speech, Log, () => Config);
+            var playback = new PlaybackService(Speech, () => Config);
+            var coordinator = new ReadCoordinator(selection, playback, Log, () => Config);
             Home = new HomeViewModel(coordinator, Log, Hotkeys, () => Config, _ => SaveCount++);
         }
 
@@ -147,6 +148,10 @@ public sealed class HomeTests
 
     private sealed class FakeSpeechEngine : ISpeechEngine
     {
+        public event Action? SpeakCompleted;
+
+        public event Action<int, int>? SpeakProgress;
+
         public List<string> Spoken { get; } = new();
 
         public bool IsSpeaking => false;

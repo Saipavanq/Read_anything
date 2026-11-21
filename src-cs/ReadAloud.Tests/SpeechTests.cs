@@ -93,6 +93,10 @@ public sealed class SpeechTests
 
     private sealed class FakeSynthesizer : ISpeechSynthesizer
     {
+        public event Action? SpeakCompleted;
+
+        public event Action<int, int>? SpeakProgress;
+
         public List<SyntheticVoiceDescriptor> Voices { get; } = new();
 
         public bool IsSpeaking { get; set; }

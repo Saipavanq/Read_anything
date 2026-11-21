@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace ReadAloud.Services;
@@ -11,6 +12,10 @@ public record SyntheticVoiceDescriptor(
 
 public interface ISpeechSynthesizer
 {
+    event Action? SpeakCompleted;
+
+    event Action<int, int>? SpeakProgress;
+
     bool IsSpeaking { get; }
 
     int Rate { get; set; }

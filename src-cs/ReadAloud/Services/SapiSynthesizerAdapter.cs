@@ -9,6 +9,17 @@ internal sealed class SapiSynthesizerAdapter : ISpeechSynthesizer
 {
     private readonly SpeechSynthesizer _synthesizer = new();
 
+    public SapiSynthesizerAdapter()
+    {
+        _synthesizer.SpeakCompleted += (_, _) => SpeakCompleted?.Invoke();
+        _synthesizer.SpeakProgress += (_, args) =>
+            SpeakProgress?.Invoke(args.CharacterPosition, args.CharacterCount);
+    }
+
+    public event Action? SpeakCompleted;
+
+    public event Action<int, int>? SpeakProgress;
+
     public bool IsSpeaking => _synthesizer.State == SynthesizerState.Speaking;
 
     public int Rate
@@ -25,7 +36,7 @@ internal sealed class SapiSynthesizerAdapter : ISpeechSynthesizer
 
     public void SelectVoice(string name) => _synthesizer.SelectVoice(name);
 
-    public void Speak(string text) => _synthesizer.Speak(text);
+    public void Speak(string text) => _synthesizer.SpeakAsync(text);
 
     public void Stop() => _synthesizer.SpeakAsyncCancelAll();
 

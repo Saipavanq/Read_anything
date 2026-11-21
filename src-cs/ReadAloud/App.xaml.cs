@@ -14,6 +14,7 @@ public partial class App : System.Windows.Application
     private IThemeService? _themes;
     private ActivityLog? _log;
     private HomeViewModel? _home;
+    private PlaybackService? _playback;
     private MainViewModel? _main;
     private MainWindow? _window;
     private HotkeyService? _hotkeys;
@@ -43,7 +44,8 @@ public partial class App : System.Windows.Application
             new UiaSelectionReader(),
             new SystemClock());
         var speech = new SapiSpeechEngine();
-        var coordinator = new ReadCoordinator(selection, speech, _log, () => _config!.Load());
+        _playback = new PlaybackService(speech, () => _config!.Load(), _config.Save);
+        var coordinator = new ReadCoordinator(selection, _playback, _log, () => _config!.Load());
 
         _registrar = new Win32HotkeyRegistrar();
         _hotkeys = new HotkeyService(_registrar);

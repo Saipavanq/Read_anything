@@ -17,7 +17,13 @@ public sealed class SapiSpeechEngine : ISpeechEngine
     public SapiSpeechEngine(ISpeechSynthesizer synthesizer)
     {
         _synthesizer = synthesizer;
+        _synthesizer.SpeakCompleted += () => SpeakCompleted?.Invoke();
+        _synthesizer.SpeakProgress += (position, count) => SpeakProgress?.Invoke(position, count);
     }
+
+    public event Action? SpeakCompleted;
+
+    public event Action<int, int>? SpeakProgress;
 
     public bool IsSpeaking => _synthesizer.IsSpeaking;
 
