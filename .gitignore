@@ -7,3 +7,7 @@ build/
 dist/
 *.spec
 .superpowers/brainstorm/
+.superpowers/sdd/2026-11-21-readaloud-csharp-rewrite/
+src-cs/**/bin/
+src-cs/**/obj/
+dist-cs/
