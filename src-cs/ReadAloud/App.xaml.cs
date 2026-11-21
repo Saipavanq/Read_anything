@@ -23,6 +23,7 @@ public partial class App : System.Windows.Application
     private MainWindow? _window;
     private HotkeyService? _hotkeys;
     private Win32HotkeyRegistrar? _registrar;
+    private AutoReadService? _autoRead;
     private TrayIcon? _trayIcon;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -96,11 +97,19 @@ public partial class App : System.Windows.Application
         MainWindow = _window;
         _window.Show();
 
+        _autoRead = new AutoReadService(
+            new MouseUpAutoReadTrigger(IsOwnWindowForeground),
+            coordinator,
+            () => _config!.Load(),
+            action => Dispatcher.Invoke(action));
+        _autoRead.ApplyConfig();
+
         _log.Add(conflicts.Count == 0 ? "Read Aloud is ready." : "Started with hotkey conflicts.");
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _autoRead?.Stop();
         _registrar?.Dispose();
         _trayIcon?.Dispose();
         base.OnExit(e);
@@ -189,6 +198,7 @@ public partial class App : System.Windows.Application
         var config = _config.Load();
         _history?.SetEnabled(config.HistoryEnabled);
         _history?.ApplyRetention(config.HistoryRetentionDays);
+        _autoRead?.ApplyConfig();
 
         if (_miniPlayer is null)
         {
@@ -200,6 +210,25 @@ public partial class App : System.Windows.Application
         {
             _miniPlayer.Hide();
         }
+    }
+
+    private static bool IsOwnWindowForeground()
+    {
+        var app = Current;
+        if (app is null)
+        {
+            return false;
+        }
+
+        foreach (Window window in app.Windows)
+        {
+            if (window.IsActive)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void ShowMainWindow()
