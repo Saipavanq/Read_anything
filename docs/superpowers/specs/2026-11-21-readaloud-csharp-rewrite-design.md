@@ -1,7 +1,7 @@
 # Read Aloud C# WPF Rewrite Design — Aurora/Orbit with Phased Vox Features
 
 Date: 2026-11-21
-Status: awaiting approval
+Status: approved
 Supersedes: the earlier core-only Read Aloud C# WPF design approved on 2026-11-21
 
 ## Intent
