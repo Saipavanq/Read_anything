@@ -97,7 +97,9 @@ Add voice cards for installed SAPI voices, search/filter by language, preview, a
 
 ### Phase 4 — Automation and expanded settings
 
-Add auto-read selected text (off by default), Start with Windows, Minimize to tray option, clipboard behavior controls, and privacy settings. Auto-read reuses `SelectionService`; it is opt-in because automatic reading can be noisy.
+Add auto-read selected text (off by default), Start with Windows, Minimize to tray option, clipboard behavior controls, and privacy settings.
+
+Auto-read is triggered by a left mouse-button release after a selection gesture, then reuses `SelectionService` with the configured capture mode. It is opt-in because automatic reading can be noisy and because the trigger uses a low-level mouse hook. The hook is installed only while auto-read is enabled, observes mouse-button release events only, and records neither keystrokes nor coordinates.
 
 ### Later / not in this design
 
@@ -154,6 +156,8 @@ src-cs/
       ActivityLog.cs
       ReadCoordinator.cs
       TrayService.cs
+      IAutoReadTrigger.cs
+      MouseUpAutoReadTrigger.cs
     ViewModels/
       MainViewModel.cs
       SettingsViewModel.cs
@@ -295,6 +299,17 @@ The activity panel shows the method and diagnostic, replacing the silent ~1.4 s 
 - Registration uses Win32 `RegisterHotKey` on a hidden WPF message window, not a global low-level hook.
 - Startup conflicts skip only the conflicting action, keep the other hotkeys registered, and show an activity message. Config is not silently changed.
 
+### Auto-read trigger (Phase 4)
+
+`IAutoReadTrigger` abstracts selection detection so tests never install a real hook. `MouseUpAutoReadTrigger` implements the Windows low-level mouse hook:
+
+- The hook is installed only when `auto_read_selection` is true and removed immediately when it is turned off or the app exits.
+- It observes `WM_LBUTTONUP` only. A completed drag selection or double-click word selection fires a debounced trigger after 120 ms.
+- If the Read Aloud main window or Settings window is foreground, the event is ignored so the app never reads its own text input.
+- Keyboard-only selection (Shift+Arrow) does not auto-read; the hotkey remains the way to read it. This limitation is stated in Settings.
+- On trigger, the coordinator calls `SelectionService.CaptureAsync(config.CaptureMethod)` on the UI thread and applies the same newest-read-wins rule as a hotkey read.
+- Settings shows a clear disclosure: while enabled, Read Aloud observes mouse-button release events to detect finished selections; it does not record keystrokes or mouse coordinates.
+
 ### Playback model (Phase 2)
 
 `PlaybackService` owns `PlaybackState`: current text, sentences, current sentence index, playing/paused/stopped status, speed, selected voice, elapsed/estimated remaining time, and progress fraction.
@@ -373,7 +388,7 @@ These are implementation decisions made by the author from prior user choices; t
 5. **Playback seeking is sentence-level.** `System.Speech` cannot seek by word.
 6. **Mini player is enabled by default for selection reads**, but always-on-top is off and auto-hide is on.
 7. **History is off by default** because it stores user text locally.
-8. **Auto-read is off by default** because automatic reading can be noisy and was not part of the original trigger model.
+8. **Auto-read is off by default and uses mouse release as its trigger.** The opt-in hook observes only button-release events, then reuses `ClipboardFirst` capture; keyboard-only selection still uses the hotkey.
 9. **SAPI voices are labelled System.** Natural/AI labels wait for real non-SAPI voices.
 10. **Start with Windows and Minimize to tray are Phase 4 settings**, with X still exiting.
 11. **Skip continues to the end.** Skipping selects a target sentence and then speaks the remaining text; it does not speak only that sentence.
@@ -410,8 +425,8 @@ These are implementation decisions made by the author from prior user choices; t
 
 ### Phase 4
 
-- `AutomationTests`: auto-read disabled by default; enabled mode reuses capture; Start with Windows setting writes/removes the HKCU Run value; Minimize to tray changes minimize only; X exits.
-- Manual smoke: enable auto-read in one app, confirm no read when disabled, toggle Start with Windows and verify registry entry, minimize to tray and quit from tray.
+- `AutomationTests`: auto-read disabled by default and no hook installed; enabling installs the trigger; a fake mouse-up event calls capture once after debounce; events from Read Aloud windows are ignored; disabling removes the hook; Start with Windows writes/removes the HKCU Run value; Minimize to tray changes minimize only; X exits.
+- Manual smoke: enable auto-read in one app, drag-select text and confirm a read, confirm no read when disabled, confirm no read from Read Aloud’s own text input, toggle Start with Windows and verify registry entry, minimize to tray and quit from tray.
 
 ## Risks and mitigations
 
@@ -421,6 +436,7 @@ These are implementation decisions made by the author from prior user choices; t
 - **SAPI voice availability:** fall back to system default if the saved voice is missing.
 - **SAPI seek limits:** sentence-level skip and estimate-based progress are explicit in the UI.
 - **Auto-read noise:** off by default and can be disabled at any time.
+- **Low-level mouse hook:** installed only while auto-read is enabled, limited to button-release events, disclosed in Settings, and abstracted behind `IAutoReadTrigger` so tests never install it.
 - **History privacy:** off by default, local-only, deletable, retention-limited.
 - **Windows 10 vs Fluent:** use Fluent-inspired XAML with native WPF controls; do not require WinUI 3.
 - **No .NET SDK yet:** install it after design approval; keep the Python build untouched until C# verification passes.
