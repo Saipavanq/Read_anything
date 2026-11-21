@@ -48,7 +48,19 @@ public sealed class ThemeTests
     }
 
     [Fact]
-    public void MainViewModel_MarksLaterNavItemsDisabled()
+    public void MainViewModel_NavigateCommand_SelectsEnabledPage()
+    {
+        var model = new MainViewModel(new FakeThemeService(), new FakeHotkeyRegistrar());
+
+        model.NavigateCommand.Execute("Voice Library");
+        Assert.Equal("Voice Library", model.SelectedNavigation);
+
+        model.NavigateCommand.Execute("History");
+        Assert.Equal("Voice Library", model.SelectedNavigation);
+    }
+
+    [Fact]
+    public void MainViewModel_MarksUnbuiltNavItemsDisabled()
     {
         var model = new MainViewModel(new FakeThemeService(), new FakeHotkeyRegistrar());
 
@@ -58,7 +70,7 @@ public sealed class ThemeTests
             new[] { "Home", "Voice Library", "History", "Settings" },
             model.NavigationItems);
         Assert.True(model.NavigationEnabled["Home"]);
-        Assert.False(model.NavigationEnabled["Voice Library"]);
+        Assert.True(model.NavigationEnabled["Voice Library"]);
         Assert.False(model.NavigationEnabled["History"]);
         Assert.True(model.NavigationEnabled["Settings"]);
 

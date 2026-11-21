@@ -72,7 +72,8 @@ public partial class App : System.Windows.Application
         _main = new MainViewModel(_themes, _registrar)
         {
             Home = _home,
-            MiniPlayer = _miniViewModel
+            MiniPlayer = _miniViewModel,
+            VoiceLibrary = new VoiceLibraryViewModel(speech, _config)
         };
 
         var tray = new TrayService(
