@@ -4,6 +4,7 @@
         xmlns:views="clr-namespace:ReadAloud.Views"
         xmlns:vm="clr-namespace:ReadAloud.ViewModels"
         Title="Read Aloud"
+        Icon="pack://application:,,,/Assets/app-icon.ico"
         Height="640"
         Width="980"
         MinHeight="500"
