@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Implemented in v1.1.0
 
 ## Date
 
@@ -27,7 +27,6 @@ The user wants the Appearance section to behave like Windows Settings > Personal
 - Changing the app logo, tray behavior, capture modes, hotkeys, speech, or Linux companion work.
 - Adding new accent colors from a design gallery; the requested warm palette is fixed.
 - Supporting Windows high-contrast themes as a separate mode.
-- Releasing a new version tag; this lands on `main` after v1.0.0.
 
 ## Chosen approach: two independent selectors
 
