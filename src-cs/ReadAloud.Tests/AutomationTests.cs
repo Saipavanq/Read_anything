@@ -350,8 +350,6 @@ public sealed class AutomationTests
 
         public string CurrentMode { get; private set; } = "system";
 
-        public void Apply(string theme) => CurrentTheme = theme == "orbit" ? "orbit" : "aurora";
-
         public void Apply(string mode, string theme)
         {
             CurrentMode = mode;

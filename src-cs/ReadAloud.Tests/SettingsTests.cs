@@ -48,6 +48,34 @@ public sealed class SettingsTests : IDisposable
     }
 
     [Fact]
+    public void ColorModeToggle_PersistsAndAppliesWithSelectedTheme()
+    {
+        var h = new Harness(_root);
+
+        h.ViewModel.ColorMode = "dark";
+        h.ViewModel.Theme = "orbit";
+
+        Assert.Equal("dark", h.Config.Load().ColorMode);
+        Assert.Equal("orbit", h.Config.Load().Theme);
+        Assert.Equal("dark", h.Themes.CurrentMode);
+        Assert.Equal("orbit", h.Themes.CurrentTheme);
+        Assert.Equal("dark", h.Main.ColorMode);
+        Assert.Equal("orbit", h.Main.Theme);
+    }
+
+    [Fact]
+    public void ColorMode_AppliesImmediatelyWithoutSave()
+    {
+        var h = new Harness(_root);
+
+        h.ViewModel.ColorMode = "light";
+
+        Assert.Equal("light", h.Config.Load().ColorMode);
+        Assert.Equal("light", h.Themes.CurrentMode);
+        Assert.Equal("light", h.Main.ColorMode);
+    }
+
+    [Fact]
     public void FinishRecording_UpdatesReadHotkey()
     {
         var h = new Harness(_root);
@@ -111,8 +139,6 @@ public sealed class SettingsTests : IDisposable
         public string CurrentTheme { get; private set; } = "aurora";
 
         public string CurrentMode { get; private set; } = "system";
-
-        public void Apply(string theme) => CurrentTheme = theme == "orbit" ? "orbit" : "aurora";
 
         public void Apply(string mode, string theme)
         {

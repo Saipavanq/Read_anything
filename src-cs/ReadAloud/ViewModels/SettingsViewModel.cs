@@ -15,6 +15,7 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly Action<Action>? _dispatcher;
     private string? _recordingAction;
 
+    private string _colorMode = "system";
     private string _theme = "aurora";
     private string _hotkeyRead = "Ctrl+Alt+R";
     private string _hotkeyVoice = "Ctrl+Alt+V";
@@ -52,6 +53,7 @@ public sealed class SettingsViewModel : ObservableObject
         _dispatcher = dispatcher;
 
         var current = config.Load();
+        _colorMode = current.ColorMode;
         _theme = current.Theme;
         _hotkeyRead = current.HotkeyRead;
         _hotkeyVoice = current.HotkeyVoice;
@@ -74,6 +76,38 @@ public sealed class SettingsViewModel : ObservableObject
         _clipboardRestore = current.ClipboardRestore;
     }
 
+    public string ColorMode
+    {
+        get => _colorMode;
+        set
+        {
+            if (!SetProperty(ref _colorMode, value))
+            {
+                return;
+            }
+
+            // The color mode decision wins immediately: persist it now and apply
+            // it on the UI dispatcher, not only when the Settings dialog is saved.
+            var config = _config.Load();
+            config.ColorMode = value;
+            _config.Save(config);
+
+            void Apply()
+            {
+                _main.ApplyTheme(ColorMode, Theme);
+            }
+
+            if (_dispatcher is null)
+            {
+                Apply();
+            }
+            else
+            {
+                _dispatcher(Apply);
+            }
+        }
+    }
+
     public string Theme
     {
         get => _theme;
@@ -92,7 +126,7 @@ public sealed class SettingsViewModel : ObservableObject
 
             void Apply()
             {
-                _main.ApplyTheme(value);
+                _main.ApplyTheme(ColorMode, value);
             }
 
             if (_dispatcher is null)
@@ -247,7 +281,7 @@ public sealed class SettingsViewModel : ObservableObject
         ApplyTo(config);
         _config.Save(config);
         ApplyStartupSettings();
-        _main.ApplyTheme(config.Theme);
+        _main.ApplyTheme(config.ColorMode, config.Theme);
 
         var conflicts = _hotkeys.RegisterAll(config, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
         ValidationMessage = conflicts.Count == 0 ? "Settings saved." : string.Join(" ", conflicts);
@@ -310,6 +344,7 @@ public sealed class SettingsViewModel : ObservableObject
 
     private void ApplyTo(AppConfig config)
     {
+        config.ColorMode = ColorMode;
         config.Theme = Theme;
         config.HotkeyRead = HotkeyRead;
         config.HotkeyVoice = HotkeyVoice;

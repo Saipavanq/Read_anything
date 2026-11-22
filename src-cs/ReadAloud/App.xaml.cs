@@ -47,8 +47,8 @@ public partial class App : System.Windows.Application
         var config = _config.Load();
         _startup = new StartupService(new RegistryAccessor());
         _startup.SetStartWithWindows(config.StartWithWindows);
-        _themes = new ThemeService(Resources);
-        _themes.Apply(config.Theme);
+        _themes = new ThemeService(Resources, new WindowsSystemThemeProvider());
+        _themes.Apply(config.ColorMode, config.Theme);
 
         _log = new ActivityLog();
         _history = new HistoryService(Path.Combine(roamingAppData, "Read Aloud", "history.json"));

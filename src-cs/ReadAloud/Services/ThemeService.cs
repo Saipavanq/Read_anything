@@ -26,13 +26,6 @@ public sealed class ThemeService : IThemeService
         _systemThemeProvider.Changed += OnSystemThemeChanged;
     }
 
-    public ThemeService(
-        ResourceDictionary applicationResources,
-        Func<string, ResourceDictionary>? dictionaryFactory = null)
-        : this(applicationResources, new WindowsSystemThemeProvider(), dictionaryFactory)
-    {
-    }
-
     public string CurrentMode { get; private set; } = "system";
 
     public string CurrentTheme { get; private set; } = "aurora";
@@ -61,8 +54,6 @@ public sealed class ThemeService : IThemeService
         CurrentMode = normalizedMode;
         CurrentTheme = normalizedTheme;
     }
-
-    public void Apply(string theme) => Apply("system", theme);
 
     private void OnSystemThemeChanged()
     {

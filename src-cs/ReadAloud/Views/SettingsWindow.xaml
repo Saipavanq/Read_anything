@@ -25,7 +25,16 @@
 
                 <GroupBox Header="Appearance" Margin="0,0,0,14" Foreground="{DynamicResource TextBrush}">
                     <StackPanel Margin="8">
-                        <TextBlock Text="Theme" Foreground="{DynamicResource TextBrush}" />
+                        <TextBlock Text="Color mode" Foreground="{DynamicResource TextBrush}" Margin="0,8,0,0" />
+                        <ComboBox Width="240"
+                                  Margin="0,4,0,0"
+                                  SelectedValue="{Binding ColorMode, UpdateSourceTrigger=PropertyChanged}"
+                                  SelectedValuePath="Tag">
+                            <ComboBoxItem Content="Windows default" Tag="system" />
+                            <ComboBoxItem Content="Dark" Tag="dark" />
+                            <ComboBoxItem Content="Light" Tag="light" />
+                        </ComboBox>
+                        <TextBlock Text="Theme" Foreground="{DynamicResource TextBrush}" Margin="0,8,0,0" />
                         <ComboBox Width="240"
                                   Margin="0,4,0,0"
                                   SelectedValue="{Binding Theme, UpdateSourceTrigger=PropertyChanged}"

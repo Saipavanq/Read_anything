@@ -143,7 +143,8 @@ public sealed class ThemeTests
         Assert.True(model.NavigationEnabled["History"]);
         Assert.True(model.NavigationEnabled["Settings"]);
 
-        model.ApplyTheme("orbit");
+        model.ApplyTheme("dark", "orbit");
+        Assert.Equal("dark", model.ColorMode);
         Assert.Equal("orbit", model.Theme);
     }
 
@@ -161,8 +162,6 @@ public sealed class ThemeTests
         public string CurrentTheme { get; private set; } = "aurora";
 
         public string CurrentMode { get; private set; } = "system";
-
-        public void Apply(string theme) => CurrentTheme = theme == "orbit" ? "orbit" : "aurora";
 
         public void Apply(string mode, string theme)
         {
