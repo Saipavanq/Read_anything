@@ -110,7 +110,15 @@ public sealed class SettingsTests : IDisposable
     {
         public string CurrentTheme { get; private set; } = "aurora";
 
+        public string CurrentMode { get; private set; } = "system";
+
         public void Apply(string theme) => CurrentTheme = theme == "orbit" ? "orbit" : "aurora";
+
+        public void Apply(string mode, string theme)
+        {
+            CurrentMode = mode;
+            CurrentTheme = theme;
+        }
     }
 
     private sealed class FakeHotkeyRegistrar : IHotkeyRegistrar
