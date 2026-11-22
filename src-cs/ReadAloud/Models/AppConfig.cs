@@ -4,6 +4,7 @@ public sealed class AppConfig
 {
     public int SchemaVersion { get; set; } = 1;
     public string Theme { get; set; } = "aurora";
+    public string ColorMode { get; set; } = "system";
     public string HotkeyRead { get; set; } = "Ctrl+Alt+R";
     public string HotkeyVoice { get; set; } = "Ctrl+Alt+V";
     public string HotkeyStop { get; set; } = "Ctrl+Alt+X";

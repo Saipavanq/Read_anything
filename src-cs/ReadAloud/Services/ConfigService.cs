@@ -10,7 +10,7 @@ public sealed class ConfigService
 {
     private static readonly HashSet<string> KnownKeys = new(StringComparer.OrdinalIgnoreCase)
     {
-        "schemaVersion", "theme", "hotkey_read", "hotkey_voice", "hotkey_stop",
+        "schemaVersion", "theme", "color_mode", "hotkey_read", "hotkey_voice", "hotkey_stop",
         "capture_method", "offline_voice", "sapi_rate", "volume", "max_chars",
         "show_activity", "playback_speed", "auto_read_selection", "mini_player_enabled",
         "mini_player_always_on_top", "mini_player_auto_hide", "history_enabled",
@@ -74,6 +74,7 @@ public sealed class ConfigService
 
         writer.WriteNumber("schemaVersion", config.SchemaVersion);
         writer.WriteString("theme", config.Theme);
+        writer.WriteString("color_mode", config.ColorMode);
         writer.WriteString("hotkey_read", config.HotkeyRead);
         writer.WriteString("hotkey_voice", config.HotkeyVoice);
         writer.WriteString("hotkey_stop", config.HotkeyStop);
@@ -131,6 +132,7 @@ public sealed class ConfigService
     private static void Apply(JsonElement root, AppConfig config)
     {
         config.Theme = GetString(root, "theme", config.Theme);
+        config.ColorMode = GetString(root, "color_mode", config.ColorMode);
         config.HotkeyRead = GetString(root, "hotkey_read", config.HotkeyRead);
         config.HotkeyVoice = GetString(root, "hotkey_voice", config.HotkeyVoice);
         config.HotkeyStop = GetString(root, "hotkey_stop", config.HotkeyStop);
@@ -167,6 +169,9 @@ public sealed class ConfigService
         {
             config.Theme = "aurora";
         }
+
+        var colorMode = config.ColorMode.ToLowerInvariant();
+        config.ColorMode = colorMode is "system" or "dark" or "light" ? colorMode : "system";
 
         config.HotkeyRead = ValidHotkey(config.HotkeyRead, "Ctrl+Alt+R");
         config.HotkeyVoice = ValidHotkey(config.HotkeyVoice, "Ctrl+Alt+V");

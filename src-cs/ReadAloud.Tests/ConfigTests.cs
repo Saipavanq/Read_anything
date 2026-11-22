@@ -148,4 +148,43 @@ public sealed class ConfigTests : IDisposable
         Assert.Equal(365, config.HistoryRetentionDays);
         Assert.Equal(3.0, config.PlaybackSpeed, 3);
     }
+
+    [Theory]
+    [InlineData("dark", "dark")]
+    [InlineData("light", "light")]
+    [InlineData("system", "system")]
+    [InlineData("orbit", "system")]
+    public void ColorMode_NormalizesToSystem(string input, string expected)
+    {
+        Write(AppDataPath, $"{{\"color_mode\":\"{input}\",\"theme\":\"orbit\"}}");
+
+        var config = Service().Load();
+
+        Assert.Equal(expected, config.ColorMode);
+        Assert.Equal("orbit", config.Theme);
+    }
+
+    [Fact]
+    public void ColorMode_Missing_DefaultsToSystem()
+    {
+        Write(AppDataPath, """{"theme":"aurora"}""");
+
+        var config = Service().Load();
+
+        Assert.Equal("system", config.ColorMode);
+        Assert.Equal("aurora", config.Theme);
+    }
+
+    [Fact]
+    public void Save_WritesColorMode()
+    {
+        var service = Service();
+        var config = service.Load();
+        config.ColorMode = "dark";
+
+        service.Save(config);
+
+        using var doc = JsonDocument.Parse(File.ReadAllText(AppDataPath));
+        Assert.Equal("dark", doc.RootElement.GetProperty("color_mode").GetString());
+    }
 }
