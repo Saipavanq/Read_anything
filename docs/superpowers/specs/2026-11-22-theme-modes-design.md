@@ -78,7 +78,7 @@ public interface ISystemThemeProvider
 }
 ```
 
-`WindowsSystemThemeProvider` reads `HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\AppsUseLightTheme` (dark when the value is `0`) and raises `Changed` on `Microsoft.Win32.SystemEvents.UserPreferenceChanged` for the `ImmersiveColorSet` category. It never writes to the registry. Tests use a `FakeSystemThemeProvider`; they never construct the Windows implementation.
+`WindowsSystemThemeProvider` reads `HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\AppsUseLightTheme` (dark when the value is `0`) and subscribes to `Microsoft.Win32.SystemEvents.UserPreferenceChanged`. Because .NET 8's event does not expose the `ImmersiveColorSet` string category, the provider re-reads the registry value on every user-preference event and raises `Changed` only when the resolved value flips. It never writes to the registry. Tests use a `FakeSystemThemeProvider`; they never construct the Windows implementation.
 
 `ThemeService` subscribes to `Changed` in its constructor. When `CurrentMode == "system"` and the event fires, it re-applies using the same selected `Theme`. When a different mode is selected, the event is ignored.
 
@@ -142,6 +142,6 @@ Both combos use immediate `PropertyChanged` persistence, matching current `Theme
 ## Risks
 
 - Existing generic WPF control templates may hard-code highlight colors; implementation must route option/hover states through the new brushes where they appear.
-- `SystemEvents.UserPreferenceChanged` can fire on unrelated categories; the provider filters to `ImmersiveColorSet`.
+- `SystemEvents.UserPreferenceChanged` can fire on unrelated categories; the provider ignores them by raising `Changed` only when the re-read registry value differs from the cached value.
 - Some machines may have `AppsUseLightTheme` missing; provider should treat missing as light.
 - If two selectors prove confusing in practice, a later pass can hide the accent dropdown when a fixed mode is active; that is not part of this design.
