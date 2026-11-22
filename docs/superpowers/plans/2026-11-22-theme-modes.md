@@ -159,6 +159,7 @@ git commit -m "feat: persist color mode setting"
   - `ISystemThemeProvider { bool IsDark { get; } event Action? Changed; }`
   - `WindowsSystemThemeProvider.IsDarkFromValue(object? value) -> bool` (public static, no registry access)
   - `ThemeService(ResourceDictionary applicationResources, ISystemThemeProvider systemThemeProvider, Func<string, ResourceDictionary>? dictionaryFactory = null)`
+  - Transitional `ThemeService(ResourceDictionary applicationResources, Func<string, ResourceDictionary>? dictionaryFactory = null)` that constructs `new WindowsSystemThemeProvider()` and delegates; Task 4 removes it so `App.xaml.cs` keeps compiling until its wiring task.
   - `IThemeService.CurrentMode`, `IThemeService.Apply(string mode, string theme)`
   - Transitional `IThemeService.Apply(string theme)` that calls `Apply("system", theme)`; Task 4 removes it.
 
@@ -306,6 +307,7 @@ Expected: FAIL — `ISystemThemeProvider` and `CurrentMode` do not exist.
 - Modify `ThemeService.cs`:
   - Add constants `LightSource = "Themes/Light.xaml"`, `DarkSource = "Themes/Dark.xaml"`, `AuroraSource = "Themes/Aurora.xaml"`, `OrbitSource = "Themes/Orbit.xaml"`, `ControlsSource = "Themes/Controls.xaml"`.
   - Add the `ISystemThemeProvider` constructor parameter and subscribe to `Changed`.
+  - Keep the old constructor `ThemeService(ResourceDictionary, Func<string, ResourceDictionary>?)` as a transitional overload that calls the new one with `new WindowsSystemThemeProvider()`. Task 4 removes it.
   - `Apply(mode, theme)` normalizes mode (`dark`, `light`, else `system`) and theme (`orbit`, else `aurora`); resolves `system` through `IsDark`; clears `MergedDictionaries`; adds base, accent, then controls using `_dictionaryFactory`; sets `CurrentMode` and `CurrentTheme`.
   - `Apply(theme)` calls `Apply("system", theme)`.
   - On `Changed`, call `Apply(CurrentMode, CurrentTheme)` only when `CurrentMode == "system"`.
@@ -436,7 +438,7 @@ Expected: FAIL — `ColorMode` properties and two-argument `ApplyTheme` do not e
 
 - `MainViewModel.cs`: add backing field `_colorMode = "system"` and public `ColorMode` property with private setter; change `ApplyTheme(string theme)` to `ApplyTheme(string mode, string theme)` calling `_themes.Apply(mode, theme)` then setting `ColorMode = _themes.CurrentMode` and `Theme = _themes.CurrentTheme`.
 - `SettingsViewModel.cs`: add `_colorMode` initialized from `current.ColorMode`; add public `ColorMode` property whose setter mirrors `Theme`: persist `color_mode` to config immediately, then call `_main.ApplyTheme(ColorMode, Theme)` on dispatcher or inline. In `ApplyTo`, set `config.ColorMode = ColorMode;`. In `Save`, replace `_main.ApplyTheme(config.Theme)` with `_main.ApplyTheme(config.ColorMode, config.Theme)`.
-- `IThemeService.cs` and `ThemeService.cs`: remove the one-argument `Apply(string theme)` overload.
+- `IThemeService.cs` and `ThemeService.cs`: remove the one-argument `Apply(string theme)` overload and the transitional `ThemeService(ResourceDictionary, Func<string, ResourceDictionary>?)` constructor.
 - `ThemeTests.cs` and `SettingsTests.cs`: remove the one-argument methods from fake theme services.
 
 - [ ] **Step 4: Wire the Settings UI and startup**
