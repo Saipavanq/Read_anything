@@ -353,9 +353,9 @@ git commit -m "feat: compose color mode and theme dictionaries"
 
 Create implicit styles for `ComboBoxItem` and `ListBoxItem`:
 - Default `Background="Transparent"`, `Foreground="{DynamicResource TextBrush}"`.
-- `IsSelected=True` sets `Background="{DynamicResource OptionHighlightBrush}"` and `Foreground="{DynamicResource OptionForegroundBrush}"`.
-- `IsMouseOver=True` sets `Background="{DynamicResource HoverBrush}"` only when not selected.
-- Do not replace control templates; only set properties and triggers.
+- Supply a minimal `ControlTemplate` (Border + ContentPresenter) whose named Border binds `Background="{TemplateBinding Background}"`. The default WPF item templates have their own `IsSelected`/`IsHighlighted` triggers that outrank Style.Triggers in dependency-property precedence, so a simple Style/Trigger cannot set the option colors.
+- Inside that template, `IsHighlighted=True` sets the named Border background to `HoverBrush`; `IsSelected=True` sets it to `OptionHighlightBrush` and sets `TextElement.Foreground` to `OptionForegroundBrush`. Put the selected trigger last so it wins when both are true.
+- Add an `IsEnabled=False` trigger that uses `MutedTextBrush`.
 
 - [ ] **Step 3: Update `App.xaml` fallback merge**
 

@@ -141,7 +141,7 @@ Both combos use immediate `PropertyChanged` persistence, matching current `Theme
 
 ## Risks
 
-- Existing generic WPF control templates may hard-code highlight colors; implementation must route option/hover states through the new brushes where they appear.
+- Existing generic WPF control templates hard-code highlight colors and their template triggers outrank Style.Triggers; `Controls.xaml` must supply minimal item ControlTemplates whose named Border uses the new option/hover brushes.
 - `SystemEvents.UserPreferenceChanged` can fire on unrelated categories; the provider ignores them by raising `Changed` only when the re-read registry value differs from the cached value.
 - Some machines may have `AppsUseLightTheme` missing; provider should treat missing as light.
 - If two selectors prove confusing in practice, a later pass can hide the accent dropdown when a fixed mode is active; that is not part of this design.
