@@ -24,4 +24,10 @@ public sealed class AppConfig
     public bool StartWithWindows { get; set; }
     public bool MinimizeToTray { get; set; }
     public bool ClipboardRestore { get; set; } = true;
+    public string TtsEngine { get; set; } = "piper";
+    public string PiperPython { get; set; } = "";
+    public string PiperModelDir { get; set; } = "";
+    public string PiperModel { get; set; } = "";
+    public int PiperSpeaker { get; set; }
+    public double PiperLengthScale { get; set; } = 1.0;
 }

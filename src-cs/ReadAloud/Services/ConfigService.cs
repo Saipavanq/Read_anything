@@ -14,7 +14,9 @@ public sealed class ConfigService
         "capture_method", "offline_voice", "sapi_rate", "volume", "max_chars",
         "show_activity", "playback_speed", "auto_read_selection", "mini_player_enabled",
         "mini_player_always_on_top", "mini_player_auto_hide", "history_enabled",
-        "history_retention_days", "start_with_windows", "minimize_to_tray", "clipboard_restore"
+        "history_retention_days", "start_with_windows", "minimize_to_tray", "clipboard_restore",
+        "tts_engine", "piper_python", "piper_model_dir", "piper_model", "piper_speaker",
+        "piper_length_scale"
     };
 
     private readonly string _appDataConfigPath;
@@ -94,6 +96,12 @@ public sealed class ConfigService
         writer.WriteBoolean("start_with_windows", config.StartWithWindows);
         writer.WriteBoolean("minimize_to_tray", config.MinimizeToTray);
         writer.WriteBoolean("clipboard_restore", config.ClipboardRestore);
+        writer.WriteString("tts_engine", config.TtsEngine);
+        writer.WriteString("piper_python", config.PiperPython);
+        writer.WriteString("piper_model_dir", config.PiperModelDir);
+        writer.WriteString("piper_model", config.PiperModel);
+        writer.WriteNumber("piper_speaker", config.PiperSpeaker);
+        writer.WriteNumber("piper_length_scale", config.PiperLengthScale);
 
         writer.WriteEndObject();
     }
@@ -151,6 +159,16 @@ public sealed class ConfigService
         config.StartWithWindows = GetBool(root, "start_with_windows", config.StartWithWindows);
         config.MinimizeToTray = GetBool(root, "minimize_to_tray", config.MinimizeToTray);
         config.ClipboardRestore = GetBool(root, "clipboard_restore", config.ClipboardRestore);
+        config.TtsEngine = GetString(root, "tts_engine", config.TtsEngine);
+        config.PiperPython = GetString(root, "piper_python", config.PiperPython);
+        config.PiperModelDir = GetString(root, "piper_model_dir", config.PiperModelDir);
+        config.PiperModel = GetString(root, "piper_model", config.PiperModel);
+        config.PiperSpeaker = GetInt(root, "piper_speaker", config.PiperSpeaker);
+
+        if (TryGet(root, "piper_length_scale", out var lengthScale) && lengthScale.TryGetDouble(out var parsedLengthScale))
+        {
+            config.PiperLengthScale = parsedLengthScale;
+        }
 
         if (TryGet(root, "playback_speed", out var speed) && speed.TryGetDouble(out var parsedSpeed))
         {
@@ -181,6 +199,11 @@ public sealed class ConfigService
         config.MaxChars = Math.Clamp(config.MaxChars, 1, 1_000_000);
         config.HistoryRetentionDays = Math.Clamp(config.HistoryRetentionDays, 1, 365);
         config.PlaybackSpeed = Math.Clamp(config.PlaybackSpeed, 0.5, 3.0);
+
+        var ttsEngine = config.TtsEngine.ToLowerInvariant();
+        config.TtsEngine = ttsEngine is "sapi" or "piper" ? ttsEngine : "piper";
+        config.PiperSpeaker = Math.Clamp(config.PiperSpeaker, 0, 32);
+        config.PiperLengthScale = Math.Clamp(config.PiperLengthScale, 0.1, 10);
     }
 
     private static string ValidHotkey(string value, string fallback)
