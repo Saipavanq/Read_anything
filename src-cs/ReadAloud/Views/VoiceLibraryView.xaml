@@ -11,10 +11,20 @@
                        FontSize="26"
                        FontWeight="SemiBold"
                        Foreground="{DynamicResource TextBrush}" />
-            <TextBlock Text="Offline Windows voices installed on this device."
-                       Margin="0,4,0,18"
+            <TextBlock Margin="0,4,0,18"
                        FontSize="13"
-                       Foreground="{DynamicResource MutedTextBrush}" />
+                       Foreground="{DynamicResource MutedTextBrush}">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Text" Value="Offline Windows voices installed on this device." />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsOnlineEngine}" Value="True">
+                                <Setter Property="Text" Value="Microsoft Edge neural voices (requires internet)." />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
 
             <Border Background="{DynamicResource CardBackgroundBrush}"
                     BorderBrush="{DynamicResource BorderBrush}"

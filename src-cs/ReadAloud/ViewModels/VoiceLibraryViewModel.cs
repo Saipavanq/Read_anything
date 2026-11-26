@@ -19,6 +19,7 @@ public sealed class VoiceLibraryViewModel : ObservableObject
     private VoiceCard? _selectedVoice;
     private string _searchText = string.Empty;
     private string? _languageFilter;
+    private bool _isOnlineEngine;
 
     public VoiceLibraryViewModel(ISpeechEngine speech, ConfigService config)
     {
@@ -45,6 +46,12 @@ public sealed class VoiceLibraryViewModel : ObservableObject
     {
         get => _languageOptions;
         private set => SetProperty(ref _languageOptions, value);
+    }
+
+    public bool IsOnlineEngine
+    {
+        get => _isOnlineEngine;
+        private set => SetProperty(ref _isOnlineEngine, value);
     }
 
     public VoiceCard? SelectedVoice
@@ -92,7 +99,9 @@ public sealed class VoiceLibraryViewModel : ObservableObject
             .OrderBy(language => language, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var configured = _config.Load().OfflineVoice;
+        var config = _config.Load();
+        IsOnlineEngine = string.Equals(config.TtsEngine, "edge", StringComparison.OrdinalIgnoreCase);
+        var configured = config.OfflineVoice;
         var resolved = VoiceIdentity.Resolve(configured, installed);
         SelectedVoice = resolved is null
             ? null

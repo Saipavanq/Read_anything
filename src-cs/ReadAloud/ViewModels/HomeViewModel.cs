@@ -109,7 +109,17 @@ public sealed class HomeViewModel : ObservableObject
             }
 
             var config = _configProvider();
-            config.OfflineVoice = value;
+            if (string.Equals(config.TtsEngine, "edge", StringComparison.OrdinalIgnoreCase))
+            {
+                config.EdgeVoicePriority.RemoveAll(voice =>
+                    string.Equals(voice, value, StringComparison.Ordinal));
+                config.EdgeVoicePriority.Insert(0, value);
+            }
+            else
+            {
+                config.OfflineVoice = value;
+            }
+
             _saveConfig?.Invoke(config);
             _log.Add($"Voice changed to {value}.");
         }

@@ -83,6 +83,26 @@ public sealed class HomeTests
         Assert.Equal(1, h.SaveCount);
     }
 
+    [Fact]
+    public void SelectedVoiceMovesToFrontOfEdgePriority()
+    {
+        var h = new Harness();
+        h.Config.TtsEngine = "EDGE";
+        h.Config.EdgeVoicePriority = new List<string>
+        {
+            "en-US-AriaNeural", "en-US-JennyNeural", "en-US-GuyNeural"
+        };
+        h.Config.OfflineVoice = "Zira";
+
+        h.Home.SelectedVoice = "en-US-GuyNeural";
+
+        Assert.Equal(
+            new[] { "en-US-GuyNeural", "en-US-AriaNeural", "en-US-JennyNeural" },
+            h.Config.EdgeVoicePriority);
+        Assert.Equal("Zira", h.Config.OfflineVoice);
+        Assert.Equal(1, h.SaveCount);
+    }
+
     private sealed class Harness
     {
         public Harness()

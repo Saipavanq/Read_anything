@@ -101,6 +101,25 @@ public sealed class VoiceLibraryTests
         Assert.Equal("Zira", h.ViewModel.SelectedVoice?.Name);
     }
 
+    [Fact]
+    public void VoiceLibrary_OnlineSubtitle()
+    {
+        var h = new Harness();
+        Assert.False(h.ViewModel.IsOnlineEngine);
+
+        h.ApplyConfig(config => config.TtsEngine = "edge");
+        h.ViewModel.Refresh();
+        Assert.True(h.ViewModel.IsOnlineEngine);
+
+        h.ApplyConfig(config => config.TtsEngine = "sapi");
+        h.ViewModel.Refresh();
+        Assert.False(h.ViewModel.IsOnlineEngine);
+
+        h.ApplyConfig(config => config.TtsEngine = "piper");
+        h.ViewModel.Refresh();
+        Assert.False(h.ViewModel.IsOnlineEngine);
+    }
+
     private sealed class Harness : IDisposable
     {
         private readonly string _directory;
