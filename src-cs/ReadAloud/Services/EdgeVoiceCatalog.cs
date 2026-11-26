@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
@@ -21,12 +22,33 @@ public sealed class EdgeVoiceCatalog
 
     private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(24);
 
-    private static readonly IReadOnlyList<VoiceInfo> FallbackVoices = new[]
+    /// <summary>
+    /// The only Edge voices exposed in the app: three female and two male.
+    /// </summary>
+    public static readonly IReadOnlyList<string> CuratedVoiceIds = new[]
     {
-        new VoiceInfo("en-US-AriaNeural", "en-US-AriaNeural", "en-US", "Female", false),
-        new VoiceInfo("en-US-JennyNeural", "en-US-JennyNeural", "en-US", "Female", false),
-        new VoiceInfo("en-US-GuyNeural", "en-US-GuyNeural", "en-US", "Male", false)
+        "en-US-AriaNeural", "en-US-JennyNeural", "en-GB-SoniaNeural",
+        "en-US-GuyNeural", "en-US-ChristopherNeural"
     };
+
+    private static readonly IReadOnlyDictionary<string, string> CuratedGenders =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["en-US-AriaNeural"] = "Female",
+            ["en-US-JennyNeural"] = "Female",
+            ["en-GB-SoniaNeural"] = "Female",
+            ["en-US-GuyNeural"] = "Male",
+            ["en-US-ChristopherNeural"] = "Male"
+        };
+
+    private static readonly IReadOnlyList<VoiceInfo> FallbackVoices = CuratedVoiceIds
+        .Select(name => new VoiceInfo(
+            name,
+            name,
+            LocaleFromId(name),
+            CuratedGenders[name],
+            false))
+        .ToList();
 
     private readonly string _cachePath;
     private readonly Func<CancellationToken, Task<string?>> _fetch;
@@ -63,7 +85,7 @@ public sealed class EdgeVoiceCatalog
                 return Array.Empty<VoiceInfo>();
             }
 
-            var voices = new List<VoiceInfo>();
+            var found = new Dictionary<string, VoiceInfo>(StringComparer.OrdinalIgnoreCase);
             foreach (var item in document.RootElement.EnumerateArray())
             {
                 if (item.ValueKind != JsonValueKind.Object
@@ -74,20 +96,25 @@ public sealed class EdgeVoiceCatalog
                 }
 
                 var name = shortName.GetString();
-                if (string.IsNullOrWhiteSpace(name))
+                if (string.IsNullOrWhiteSpace(name) || !IsCuratedVoice(name))
                 {
                     continue;
                 }
 
-                voices.Add(new VoiceInfo(
+                found[name] = new VoiceInfo(
                     name,
                     name,
                     ReadString(item, "Locale"),
                     ReadString(item, "Gender"),
-                    false));
+                    false);
             }
 
-            return voices;
+            // Return in priority order so the library is stable even when the
+            // Microsoft catalog order changes.
+            return CuratedVoiceIds
+                .Where(found.ContainsKey)
+                .Select(name => found[name])
+                .ToList();
         }
         catch (Exception)
         {
@@ -171,6 +198,16 @@ public sealed class EdgeVoiceCatalog
         using var response = await client.GetAsync(VoicesUrl, token).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadAsStringAsync(token).ConfigureAwait(false);
+    }
+
+    public static bool IsCuratedVoice(string? voice)
+        => !string.IsNullOrWhiteSpace(voice)
+            && CuratedVoiceIds.Contains(voice, StringComparer.OrdinalIgnoreCase);
+
+    private static string LocaleFromId(string id)
+    {
+        var parts = id.Split('-');
+        return parts.Length >= 2 ? $"{parts[0]}-{parts[1]}" : string.Empty;
     }
 
     private static string ReadString(JsonElement item, string property)

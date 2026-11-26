@@ -72,6 +72,7 @@ public sealed class VoiceLibraryTests
         Assert.Equal(1, h.Speech.SpeakCalls);
         Assert.False(string.IsNullOrWhiteSpace(h.Speech.LastText));
         Assert.Equal("Zira description", h.Speech.LastOptions?.VoiceName);
+        Assert.Equal("Zira", h.Speech.LastOptions?.VoiceId);
         Assert.Equal(10, h.Speech.LastOptions?.Rate);
         Assert.Equal(80, h.Speech.LastOptions?.Volume);
         Assert.Equal(string.Empty, h.Config.Load().OfflineVoice);
@@ -118,6 +119,27 @@ public sealed class VoiceLibraryTests
         h.ApplyConfig(config => config.TtsEngine = "piper");
         h.ViewModel.Refresh();
         Assert.False(h.ViewModel.IsOnlineEngine);
+    }
+
+    [Fact]
+    public void VoiceLibrary_EdgeRefreshUsesFirstPriorityVoiceAndLabelsPiper()
+    {
+        var h = new Harness();
+        h.Speech.Voices.Add(new VoiceInfo("en-US-AriaNeural", "en-US-AriaNeural", "en-US", "Female", false));
+        h.Speech.Voices.Add(new VoiceInfo("en-US-GuyNeural", "en-US-GuyNeural", "en-US", "Male", false));
+        h.Speech.Voices.Add(new VoiceInfo("en_US-amy-medium", "amy.onnx", "Not specified", "Not specified", false));
+        h.ApplyConfig(config =>
+        {
+            config.TtsEngine = "edge";
+            config.EdgeVoicePriority = new List<string> { "en-US-GuyNeural", "en-US-AriaNeural" };
+            config.OfflineVoice = "en_US-amy-medium";
+        });
+
+        h.ViewModel.Refresh();
+
+        Assert.Equal("en-US-GuyNeural", h.ViewModel.SelectedVoice?.Name);
+        var piper = Assert.Single(h.ViewModel.Voices, voice => voice.Name == "en_US-amy-medium");
+        Assert.Equal("Piper (offline)", piper.QualityLabel);
     }
 
     private sealed class Harness : IDisposable

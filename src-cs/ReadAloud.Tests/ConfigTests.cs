@@ -265,7 +265,13 @@ public sealed class ConfigTests : IDisposable
     public void EdgePriority_DefaultAndRoundTrip()
     {
         var config = new AppConfig();
-        Assert.Equal(new[] { "en-US-AriaNeural", "en-US-JennyNeural", "en-US-GuyNeural" }, config.EdgeVoicePriority);
+        Assert.Equal(
+            new[]
+            {
+                "en-US-AriaNeural", "en-US-JennyNeural", "en-GB-SoniaNeural",
+                "en-US-GuyNeural", "en-US-ChristopherNeural"
+            },
+            config.EdgeVoicePriority);
 
         config.EdgeVoicePriority = new List<string> { "en-US-GuyNeural", "en-US-AriaNeural" };
         var service = Service();

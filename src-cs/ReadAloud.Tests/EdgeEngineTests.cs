@@ -43,7 +43,8 @@ public sealed class EdgeEngineTests : IDisposable
         var json = """
         [
           {"Name":"Microsoft Aria Online (Natural) - English (United States)","ShortName":"en-US-AriaNeural","Locale":"en-US","Gender":"Female"},
-          {"Name":"Microsoft Guy Online (Natural) - English (United States)","ShortName":"en-US-GuyNeural","Locale":"en-US","Gender":"Male"}
+          {"Name":"Microsoft Guy Online (Natural) - English (United States)","ShortName":"en-US-GuyNeural","Locale":"en-US","Gender":"Male"},
+          {"Name":"Microsoft Katja Online (Natural) - German","ShortName":"de-DE-KatjaNeural","Locale":"de-DE","Gender":"Female"}
         ]
         """;
 
@@ -57,6 +58,34 @@ public sealed class EdgeEngineTests : IDisposable
         Assert.False(voices[0].IsDefault);
         Assert.Equal("en-US-GuyNeural", voices[1].Name);
         Assert.Equal("Male", voices[1].Gender);
+        Assert.DoesNotContain(voices, voice => voice.Name == "de-DE-KatjaNeural");
+    }
+
+    [Fact]
+    public void EdgeCatalog_ReturnsOnlyTheFiveCuratedVoices()
+    {
+        var json = """
+        [
+          {"ShortName":"de-DE-KatjaNeural","Locale":"de-DE","Gender":"Female"},
+          {"ShortName":"en-US-ChristopherNeural","Locale":"en-US","Gender":"Male"},
+          {"ShortName":"en-US-GuyNeural","Locale":"en-US","Gender":"Male"},
+          {"ShortName":"en-GB-SoniaNeural","Locale":"en-GB","Gender":"Female"},
+          {"ShortName":"en-US-JennyNeural","Locale":"en-US","Gender":"Female"},
+          {"ShortName":"en-US-AriaNeural","Locale":"en-US","Gender":"Female"}
+        ]
+        """;
+
+        var voices = EdgeVoiceCatalog.Parse(json);
+
+        Assert.Equal(
+            new[]
+            {
+                "en-US-AriaNeural", "en-US-JennyNeural", "en-GB-SoniaNeural",
+                "en-US-GuyNeural", "en-US-ChristopherNeural"
+            },
+            voices.Select(voice => voice.Name));
+        Assert.Equal(3, voices.Count(voice => voice.Gender == "Female"));
+        Assert.Equal(2, voices.Count(voice => voice.Gender == "Male"));
     }
 
     [Fact]
@@ -73,9 +102,13 @@ public sealed class EdgeEngineTests : IDisposable
             var voices = catalog.GetVoices();
             timer.Stop();
 
-            Assert.Contains(voices, voice => voice.Name == "en-US-AriaNeural");
-            Assert.Contains(voices, voice => voice.Name == "en-US-JennyNeural");
-            Assert.Contains(voices, voice => voice.Name == "en-US-GuyNeural");
+            Assert.Equal(
+                new[]
+                {
+                    "en-US-AriaNeural", "en-US-JennyNeural", "en-GB-SoniaNeural",
+                    "en-US-GuyNeural", "en-US-ChristopherNeural"
+                },
+                voices.Select(voice => voice.Name));
             Assert.True(timer.Elapsed < TimeSpan.FromSeconds(2), "GetVoices must not wait for the HTTP refresh.");
         }
         finally
@@ -152,6 +185,49 @@ public sealed class EdgeEngineTests : IDisposable
         await completed.Task.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.Equal(new[] { "preview" }, synthesizer.Calls);
         Assert.Equal(originalPriority, config.EdgeVoicePriority);
+    }
+
+    [Fact]
+    public void EdgeEngine_GetVoicesIncludesPiperVoice()
+    {
+        var fallback = new FakeFallbackEngine();
+        fallback.Voices.Add(new VoiceInfo("en_US-amy-medium", "amy.onnx", "Not specified", "Not specified", false));
+        var engine = new EdgeSpeechEngine(
+            () => new AppConfig(),
+            new FakeSynthesizer(_root),
+            new FakeAudioPlayer(),
+            fallback,
+            OfflineCatalog());
+
+        var voices = engine.GetVoices();
+
+        Assert.Equal(6, voices.Count);
+        Assert.Contains(voices, voice => voice.Name == "en-US-AriaNeural");
+        Assert.Contains(voices, voice => voice.Name == "en-US-ChristopherNeural");
+        Assert.Contains(voices, voice => voice.Name == "en_US-amy-medium");
+    }
+
+    [Fact]
+    public async Task EdgeEngine_PreviewPiperVoiceUsesFallback()
+    {
+        var synthesizer = new FakeSynthesizer(_root);
+        var player = new FakeAudioPlayer();
+        var fallback = new FakeFallbackEngine();
+        fallback.Voices.Add(new VoiceInfo("en_US-amy-medium", "amy.onnx", "Not specified", "Not specified", false));
+        var engine = new EdgeSpeechEngine(
+            () => new AppConfig(), synthesizer, player, fallback, OfflineCatalog());
+        var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        engine.SpeakCompleted += () => completed.TrySetResult();
+
+        engine.Speak(
+            "Local preview.",
+            new VoiceOptions("amy.onnx", 0, 100, VoiceId: "en_US-amy-medium"));
+
+        await completed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Empty(synthesizer.Calls);
+        Assert.Equal(0, player.PlayCalls);
+        Assert.Equal(1, fallback.SpeakCalls);
+        Assert.Equal("Local preview.", fallback.LastText);
     }
 
     [Fact]
@@ -343,13 +419,15 @@ public sealed class EdgeEngineTests : IDisposable
 
         public TaskCompletionSource Called { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+        public List<VoiceInfo> Voices { get; } = new();
+
         public int SpeakCalls { get; private set; }
 
         public string? LastText { get; private set; }
 
         public bool IsSpeaking { get; private set; }
 
-        public IReadOnlyList<VoiceInfo> GetVoices() => Array.Empty<VoiceInfo>();
+        public IReadOnlyList<VoiceInfo> GetVoices() => Voices.ToList();
 
         public void Speak(string text, VoiceOptions options)
         {

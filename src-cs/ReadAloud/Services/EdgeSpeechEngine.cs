@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ReadAloud.Models;
@@ -53,7 +54,12 @@ public sealed class EdgeSpeechEngine : ISpeechEngine
     {
         try
         {
-            return _catalog.GetVoices();
+            // The library shows the curated Edge voices together with Piper so
+            // the user can audition either engine from one list.
+            var edge = _catalog.GetVoices();
+            var piper = _fallback.GetVoices();
+            var seen = new HashSet<string>(edge.Select(voice => voice.Name), StringComparer.OrdinalIgnoreCase);
+            return edge.Concat(piper.Where(voice => seen.Add(voice.Name))).ToList();
         }
         catch (Exception)
         {
@@ -164,26 +170,32 @@ public sealed class EdgeSpeechEngine : ISpeechEngine
         {
             var config = _configProvider() ?? new AppConfig();
             var rate = FormatRate(config.PlaybackSpeed);
-            foreach (var voice in Candidates(options, config))
-            {
-                token.ThrowIfCancellationRequested();
-                try
-                {
-                    var path = await _synthesizer
-                        .SynthesizeAsync(text, voice, rate, token)
-                        .ConfigureAwait(false);
-                    if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
-                    {
-                        DeleteTemp(path);
-                        continue;
-                    }
 
-                    mp3 = path;
-                    break;
-                }
-                catch (Exception)
+            // A Piper card is previewed locally; it must not be sent to Edge.
+            var usePiperPreview = IsFallbackPreview(options);
+            if (!usePiperPreview)
+            {
+                foreach (var voice in Candidates(options, config))
                 {
-                    // Try the next voice in the priority list.
+                    token.ThrowIfCancellationRequested();
+                    try
+                    {
+                        var path = await _synthesizer
+                            .SynthesizeAsync(text, voice, rate, token)
+                            .ConfigureAwait(false);
+                        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+                        {
+                            DeleteTemp(path);
+                            continue;
+                        }
+
+                        mp3 = path;
+                        break;
+                    }
+                    catch (Exception)
+                    {
+                        // Try the next voice in the priority list.
+                    }
                 }
             }
 
@@ -249,6 +261,26 @@ public sealed class EdgeSpeechEngine : ISpeechEngine
             }
 
             cancellation.Dispose();
+        }
+    }
+
+    private bool IsFallbackPreview(VoiceOptions options)
+    {
+        var requested = options.VoiceId?.Trim();
+        if (string.IsNullOrEmpty(requested))
+        {
+            return false;
+        }
+
+        try
+        {
+            return _fallback.GetVoices().Any(voice =>
+                string.Equals(voice.Name, requested, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(voice.Description, requested, StringComparison.OrdinalIgnoreCase));
+        }
+        catch (Exception)
+        {
+            return false;
         }
     }
 

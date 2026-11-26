@@ -90,6 +90,9 @@ public sealed class VoiceLibraryViewModel : ObservableObject
 
     public void Refresh()
     {
+        var config = _config.Load();
+        IsOnlineEngine = string.Equals(config.TtsEngine, "edge", StringComparison.OrdinalIgnoreCase);
+
         var installed = _speech.GetVoices();
         Voices = installed.Select(Map).ToList();
         LanguageOptions = Voices
@@ -99,9 +102,9 @@ public sealed class VoiceLibraryViewModel : ObservableObject
             .OrderBy(language => language, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var config = _config.Load();
-        IsOnlineEngine = string.Equals(config.TtsEngine, "edge", StringComparison.OrdinalIgnoreCase);
-        var configured = config.OfflineVoice;
+        var configured = IsOnlineEngine
+            ? config.EdgeVoicePriority?.FirstOrDefault() ?? string.Empty
+            : config.OfflineVoice;
         var resolved = VoiceIdentity.Resolve(configured, installed);
         SelectedVoice = resolved is null
             ? null
@@ -126,16 +129,20 @@ public sealed class VoiceLibraryViewModel : ObservableObject
 
         _speech.Speak(
             PreviewText,
-            new VoiceOptions(card.Description, PlaybackService.SpeedToRate(config.PlaybackSpeed), config.Volume));
+            new VoiceOptions(
+                card.Description,
+                PlaybackService.SpeedToRate(config.PlaybackSpeed),
+                config.Volume,
+                card.Name));
     }
 
-    private static VoiceCard Map(VoiceInfo voice)
+    private VoiceCard Map(VoiceInfo voice)
         => new(
             voice.Name,
             voice.Description,
             voice.Language,
             string.IsNullOrWhiteSpace(voice.Gender) ? "Not specified" : voice.Gender,
-            "System",
+            IsOnlineEngine && !EdgeVoiceCatalog.IsCuratedVoice(voice.Name) ? "Piper (offline)" : "System",
             voice.IsDefault);
 
     private void ApplyFilter()

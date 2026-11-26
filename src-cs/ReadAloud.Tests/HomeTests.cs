@@ -103,6 +103,34 @@ public sealed class HomeTests
         Assert.Equal(1, h.SaveCount);
     }
 
+    [Fact]
+    public void Home_RefreshShowsOnlyEdgeVoicesWhenEdgeIsActive()
+    {
+        var h = new Harness();
+        foreach (var voice in new[]
+        {
+            "en-US-AriaNeural", "en-US-JennyNeural", "en-GB-SoniaNeural",
+            "en-US-GuyNeural", "en-US-ChristopherNeural"
+        })
+        {
+            h.Speech.Voices.Add(new VoiceInfo(voice, voice, "en-US", "Female", false));
+        }
+        h.Speech.Voices.Add(new VoiceInfo("en_US-amy-medium", "amy.onnx", "Not specified", "Not specified", false));
+        h.Config.TtsEngine = "edge";
+        h.Config.EdgeVoicePriority = new List<string>
+        {
+            "en-US-GuyNeural", "en-US-AriaNeural", "en-US-JennyNeural",
+            "en-GB-SoniaNeural", "en-US-ChristopherNeural"
+        };
+        h.Config.OfflineVoice = "en_US-amy-medium";
+
+        h.Home.Refresh();
+
+        Assert.Equal(5, h.Home.Voices.Count);
+        Assert.DoesNotContain("en_US-amy-medium", h.Home.Voices);
+        Assert.Equal("en-US-GuyNeural", h.Home.SelectedVoice);
+    }
+
     private sealed class Harness
     {
         public Harness()

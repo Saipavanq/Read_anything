@@ -19,7 +19,7 @@
                         <Setter Property="Text" Value="Offline Windows voices installed on this device." />
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsOnlineEngine}" Value="True">
-                                <Setter Property="Text" Value="Microsoft Edge neural voices (requires internet)." />
+                                <Setter Property="Text" Value="Five Microsoft Edge neural voices plus Piper (internet required for Edge)." />
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>

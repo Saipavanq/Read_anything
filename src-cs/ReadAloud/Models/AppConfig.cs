@@ -29,7 +29,8 @@ public sealed class AppConfig
     public string TtsEngine { get; set; } = "piper";
     public List<string> EdgeVoicePriority { get; set; } = new()
     {
-        "en-US-AriaNeural", "en-US-JennyNeural", "en-US-GuyNeural"
+        "en-US-AriaNeural", "en-US-JennyNeural", "en-GB-SoniaNeural",
+        "en-US-GuyNeural", "en-US-ChristopherNeural"
     };
     public string PiperPython { get; set; } = "";
     public string PiperModelDir { get; set; } = "";
