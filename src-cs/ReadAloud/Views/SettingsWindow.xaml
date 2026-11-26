@@ -110,7 +110,10 @@
                                   SelectedValuePath="Tag">
                             <ComboBoxItem Content="System voice (SAPI)" Tag="sapi" />
                             <ComboBoxItem Content="Natural voice - Piper" Tag="piper" />
+                            <ComboBoxItem Content="Online voice - Microsoft Edge (text is sent online)" Tag="edge" />
                         </ComboBox>
+                        <TextBlock Text="Edge voices (priority order)" Foreground="{DynamicResource TextBrush}" />
+                        <TextBox Margin="0,4,0,10" Text="{Binding EdgeVoicePriorityText, UpdateSourceTrigger=PropertyChanged}" />
                         <TextBlock Text="Piper Python" Foreground="{DynamicResource TextBrush}" />
                         <TextBox Margin="0,4,0,10" Text="{Binding PiperPython, UpdateSourceTrigger=PropertyChanged}" />
                         <TextBlock Text="Piper model folder" Foreground="{DynamicResource TextBrush}" />

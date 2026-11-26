@@ -133,7 +133,7 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal("en_US-test-medium.onnx", h.ViewModel.PiperModel);
         Assert.Equal(7, h.ViewModel.PiperSpeaker);
         Assert.Equal(1.25, h.ViewModel.PiperLengthScale);
-        Assert.Equal(new[] { "sapi", "piper" }, h.ViewModel.SpeechEngines);
+        Assert.Equal(new[] { "sapi", "piper", "edge" }, h.ViewModel.SpeechEngines);
     }
 
     [Fact]
@@ -156,6 +156,36 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal("en_US-amy-medium.onnx", saved.PiperModel);
         Assert.Equal(9, saved.PiperSpeaker);
         Assert.Equal(0.75, saved.PiperLengthScale);
+    }
+
+    [Fact]
+    public void EdgePriority_LoadIntoViewModel()
+    {
+        var appData = Path.Combine(_root, "appdata");
+        Directory.CreateDirectory(appData);
+        File.WriteAllText(Path.Combine(appData, "settings.json"), """
+            {
+              "tts_engine": "edge",
+              "edge_voice_priority": ["en-US-AriaNeural", "en-US-JennyNeural"]
+            }
+            """);
+
+        var h = new Harness(_root);
+
+        Assert.Equal("edge", h.ViewModel.TtsEngine);
+        Assert.Equal("en-US-AriaNeural, en-US-JennyNeural", h.ViewModel.EdgeVoicePriorityText);
+        Assert.Equal(new[] { "sapi", "piper", "edge" }, h.ViewModel.SpeechEngines);
+    }
+
+    [Fact]
+    public void EdgePriority_SaveBackToConfig()
+    {
+        var h = new Harness(_root);
+
+        h.ViewModel.EdgeVoicePriorityText = " en-US-AriaNeural , , en-US-JennyNeural ";
+        h.ViewModel.Save();
+
+        Assert.Equal(new[] { "en-US-AriaNeural", "en-US-JennyNeural" }, h.Config.Load().EdgeVoicePriority);
     }
 
     private sealed class Harness

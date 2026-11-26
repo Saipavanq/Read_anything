@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using ReadAloud.Models;
@@ -258,5 +259,33 @@ public sealed class ConfigTests : IDisposable
         Assert.Equal("piper", config.TtsEngine);
         Assert.Equal(0, config.PiperSpeaker);
         Assert.Equal(10, config.PiperLengthScale, 3);
+    }
+
+    [Fact]
+    public void EdgePriority_DefaultAndRoundTrip()
+    {
+        var config = new AppConfig();
+        Assert.Equal(new[] { "en-US-AriaNeural", "en-US-JennyNeural", "en-US-GuyNeural" }, config.EdgeVoicePriority);
+
+        config.EdgeVoicePriority = new List<string> { "en-US-GuyNeural", "en-US-AriaNeural" };
+        var service = Service();
+        service.Save(config);
+
+        var reloaded = new ConfigService(AppDataPath, LegacyPath).Load();
+        Assert.Equal(new[] { "en-US-GuyNeural", "en-US-AriaNeural" }, reloaded.EdgeVoicePriority);
+
+        using var doc = JsonDocument.Parse(File.ReadAllText(AppDataPath));
+        Assert.Equal(JsonValueKind.Array, doc.RootElement.GetProperty("edge_voice_priority").ValueKind);
+        Assert.Equal("en-US-GuyNeural", doc.RootElement.GetProperty("edge_voice").GetString());
+    }
+
+    [Fact]
+    public void EdgePriority_LegacyVoiceSeedsList()
+    {
+        Write(AppDataPath, """{"edge_voice": "en-US-JennyNeural"}""");
+
+        var config = Service().Load();
+
+        Assert.Equal("en-US-JennyNeural", config.EdgeVoicePriority[0]);
     }
 }

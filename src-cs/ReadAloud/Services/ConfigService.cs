@@ -15,8 +15,8 @@ public sealed class ConfigService
         "show_activity", "playback_speed", "auto_read_selection", "mini_player_enabled",
         "mini_player_always_on_top", "mini_player_auto_hide", "history_enabled",
         "history_retention_days", "start_with_windows", "minimize_to_tray", "clipboard_restore",
-        "tts_engine", "piper_python", "piper_model_dir", "piper_model", "piper_speaker",
-        "piper_length_scale"
+        "tts_engine", "edge_voice_priority", "edge_voice", "piper_python", "piper_model_dir",
+        "piper_model", "piper_speaker", "piper_length_scale"
     };
 
     private readonly string _appDataConfigPath;
@@ -97,6 +97,14 @@ public sealed class ConfigService
         writer.WriteBoolean("minimize_to_tray", config.MinimizeToTray);
         writer.WriteBoolean("clipboard_restore", config.ClipboardRestore);
         writer.WriteString("tts_engine", config.TtsEngine);
+        writer.WriteStartArray("edge_voice_priority");
+        foreach (var voice in config.EdgeVoicePriority)
+        {
+            writer.WriteStringValue(voice);
+        }
+
+        writer.WriteEndArray();
+        writer.WriteString("edge_voice", config.EdgeVoicePriority.Count > 0 ? config.EdgeVoicePriority[0] : string.Empty);
         writer.WriteString("piper_python", config.PiperPython);
         writer.WriteString("piper_model_dir", config.PiperModelDir);
         writer.WriteString("piper_model", config.PiperModel);
@@ -160,6 +168,20 @@ public sealed class ConfigService
         config.MinimizeToTray = GetBool(root, "minimize_to_tray", config.MinimizeToTray);
         config.ClipboardRestore = GetBool(root, "clipboard_restore", config.ClipboardRestore);
         config.TtsEngine = GetString(root, "tts_engine", config.TtsEngine);
+        var priority = GetStringList(root, "edge_voice_priority");
+        if (priority is not null)
+        {
+            config.EdgeVoicePriority = priority;
+        }
+        else
+        {
+            var legacyVoice = GetString(root, "edge_voice", string.Empty);
+            if (!string.IsNullOrWhiteSpace(legacyVoice))
+            {
+                config.EdgeVoicePriority = new List<string> { legacyVoice };
+            }
+        }
+
         config.PiperPython = GetString(root, "piper_python", config.PiperPython);
         config.PiperModelDir = GetString(root, "piper_model_dir", config.PiperModelDir);
         config.PiperModel = GetString(root, "piper_model", config.PiperModel);
@@ -201,7 +223,7 @@ public sealed class ConfigService
         config.PlaybackSpeed = Math.Clamp(config.PlaybackSpeed, 0.5, 3.0);
 
         var ttsEngine = config.TtsEngine.ToLowerInvariant();
-        config.TtsEngine = ttsEngine is "sapi" or "piper" ? ttsEngine : "piper";
+        config.TtsEngine = ttsEngine is "sapi" or "piper" or "edge" ? ttsEngine : "piper";
         config.PiperSpeaker = Math.Clamp(config.PiperSpeaker, 0, 32);
         config.PiperLengthScale = Math.Clamp(config.PiperLengthScale, 0.1, 10);
     }
@@ -239,6 +261,31 @@ public sealed class ConfigService
         => TryGet(root, name, out var value) && value.ValueKind == JsonValueKind.String
             ? value.GetString() ?? fallback
             : fallback;
+
+    private static List<string>? GetStringList(JsonElement root, string name)
+    {
+        if (!TryGet(root, name, out var value) || value.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        var result = new List<string>();
+        foreach (var item in value.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.String)
+            {
+                continue;
+            }
+
+            var entry = item.GetString();
+            if (!string.IsNullOrWhiteSpace(entry))
+            {
+                result.Add(entry);
+            }
+        }
+
+        return result;
+    }
 
     private static int GetInt(JsonElement root, string name, int fallback)
         => TryGet(root, name, out var value) && value.TryGetInt32(out var parsed)

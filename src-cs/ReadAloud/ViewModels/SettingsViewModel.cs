@@ -24,6 +24,7 @@ public sealed class SettingsViewModel : ObservableObject
     private string _offlineVoice = string.Empty;
     private int _sapiRate;
     private string _ttsEngine = "piper";
+    private string _edgeVoicePriorityText = string.Empty;
     private string _piperPython = string.Empty;
     private string _piperModelDir = string.Empty;
     private string _piperModel = string.Empty;
@@ -68,6 +69,7 @@ public sealed class SettingsViewModel : ObservableObject
         _offlineVoice = current.OfflineVoice;
         _sapiRate = current.SapiRate;
         _ttsEngine = current.TtsEngine;
+        _edgeVoicePriorityText = string.Join(", ", current.EdgeVoicePriority);
         _piperPython = current.PiperPython;
         _piperModelDir = current.PiperModelDir;
         _piperModel = current.PiperModel;
@@ -188,12 +190,18 @@ public sealed class SettingsViewModel : ObservableObject
         set => SetProperty(ref _sapiRate, value);
     }
 
-    public IReadOnlyList<string> SpeechEngines { get; } = new[] { "sapi", "piper" };
+    public IReadOnlyList<string> SpeechEngines { get; } = new[] { "sapi", "piper", "edge" };
 
     public string TtsEngine
     {
         get => _ttsEngine;
         set => SetProperty(ref _ttsEngine, value);
+    }
+
+    public string EdgeVoicePriorityText
+    {
+        get => _edgeVoicePriorityText;
+        set => SetProperty(ref _edgeVoicePriorityText, value);
     }
 
     public string PiperPython
@@ -403,6 +411,8 @@ public sealed class SettingsViewModel : ObservableObject
         config.OfflineVoice = OfflineVoice;
         config.SapiRate = SapiRate;
         config.TtsEngine = TtsEngine;
+        config.EdgeVoicePriority = new List<string>(
+            EdgeVoicePriorityText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
         config.PiperPython = PiperPython;
         config.PiperModelDir = PiperModelDir;
         config.PiperModel = PiperModel;
