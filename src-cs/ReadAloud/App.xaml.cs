@@ -60,7 +60,9 @@ public partial class App : System.Windows.Application
             new UiaSelectionReader(),
             new SystemClock(),
             () => _config!.Load().ClipboardRestore);
-        var speech = new SapiSpeechEngine();
+        var sapi = new SapiSpeechEngine();
+        var piper = new PiperSpeechEngine(() => _config!.Load());
+        ISpeechEngine speech = new SelectableSpeechEngine(sapi, piper, () => _config!.Load());
         _playback = new PlaybackService(speech, () => _config!.Load(), _config.Save, _history);
         _miniWindow = new MiniPlayerWindow();
         _miniPlayer = new MiniPlayerService(_miniWindow, () => _config!.Load(), _config.Save);

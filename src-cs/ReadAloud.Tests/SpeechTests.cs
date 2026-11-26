@@ -83,6 +83,22 @@ public sealed class SpeechTests
         Assert.Equal("David", synth.SelectedVoice);
     }
 
+    [Fact]
+    public void SelectableEngine_DefaultConfigUsesPiper()
+    {
+        var sapi = new FakeSpeechEngine();
+        var piper = new FakeSpeechEngine();
+        var config = new AppConfig();
+        var engine = new SelectableSpeechEngine(sapi, piper, () => config);
+
+        engine.Speak("Piper default text", new VoiceOptions("voice", 0, 100));
+
+        Assert.Equal(1, piper.SpeakCalls);
+        Assert.Equal("Piper default text", piper.LastText);
+        Assert.Equal(0, sapi.SpeakCalls);
+        Assert.Null(sapi.LastText);
+    }
+
     private static FakeSynthesizer DefaultSynth()
     {
         var synth = new FakeSynthesizer();
@@ -129,5 +145,35 @@ public sealed class SpeechTests
         }
 
         public IReadOnlyList<SyntheticVoiceDescriptor> GetVoices() => Voices;
+    }
+
+    private sealed class FakeSpeechEngine : ISpeechEngine
+    {
+        public event Action? SpeakCompleted;
+
+        public event Action<int, int>? SpeakProgress;
+
+        public bool IsSpeaking { get; private set; }
+
+        public string? LastText { get; private set; }
+
+        public int SpeakCalls { get; private set; }
+
+        public int StopCalls { get; private set; }
+
+        public IReadOnlyList<VoiceInfo> GetVoices() => Array.Empty<VoiceInfo>();
+
+        public void Speak(string text, VoiceOptions options)
+        {
+            SpeakCalls++;
+            LastText = text;
+            IsSpeaking = true;
+        }
+
+        public void Stop()
+        {
+            StopCalls++;
+            IsSpeaking = false;
+        }
     }
 }
