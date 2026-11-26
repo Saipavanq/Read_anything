@@ -103,6 +103,24 @@
 
                 <GroupBox Header="Voice and playback" Margin="0,0,0,14" Foreground="{DynamicResource TextBrush}">
                     <StackPanel Margin="8">
+                        <TextBlock Text="Speech engine" Foreground="{DynamicResource TextBrush}" />
+                        <ComboBox Width="240"
+                                  Margin="0,4,0,10"
+                                  SelectedValue="{Binding TtsEngine, UpdateSourceTrigger=PropertyChanged}"
+                                  SelectedValuePath="Tag">
+                            <ComboBoxItem Content="System voice (SAPI)" Tag="sapi" />
+                            <ComboBoxItem Content="Natural voice - Piper" Tag="piper" />
+                        </ComboBox>
+                        <TextBlock Text="Piper Python" Foreground="{DynamicResource TextBrush}" />
+                        <TextBox Margin="0,4,0,10" Text="{Binding PiperPython, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Text="Piper model folder" Foreground="{DynamicResource TextBrush}" />
+                        <TextBox Margin="0,4,0,10" Text="{Binding PiperModelDir, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Text="Piper voice" Foreground="{DynamicResource TextBrush}" />
+                        <TextBox Margin="0,4,0,10" Text="{Binding PiperModel, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Text="Speaker (0 to 32)" Foreground="{DynamicResource TextBrush}" />
+                        <Slider Minimum="0" Maximum="32" Value="{Binding PiperSpeaker}" />
+                        <TextBlock Text="Voice rate (0.1 to 10)" Foreground="{DynamicResource TextBrush}" />
+                        <Slider Minimum="0.1" Maximum="10" SmallChange="0.1" Value="{Binding PiperLengthScale}" />
                         <TextBlock Text="Offline voice" Foreground="{DynamicResource TextBrush}" />
                         <TextBox Margin="0,4,0,10" Text="{Binding OfflineVoice, UpdateSourceTrigger=PropertyChanged}" />
                         <TextBlock Text="SAPI rate (-10 to 10)" Foreground="{DynamicResource TextBrush}" />
