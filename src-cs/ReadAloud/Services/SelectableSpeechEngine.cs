@@ -8,21 +8,39 @@ public sealed class SelectableSpeechEngine : ISpeechEngine
 {
     private readonly ISpeechEngine _sapi;
     private readonly ISpeechEngine _piper;
+    private readonly ISpeechEngine _edge;
     private readonly Func<AppConfig> _configProvider;
 
+    // Legacy overload: before Edge existed every selection other than SAPI
+    // resolved to Piper, and the same events were forwarded once.
     public SelectableSpeechEngine(
         ISpeechEngine sapi,
         ISpeechEngine piper,
         Func<AppConfig> configProvider)
+        : this(sapi, piper, piper, configProvider)
+    {
+    }
+
+    public SelectableSpeechEngine(
+        ISpeechEngine sapi,
+        ISpeechEngine piper,
+        ISpeechEngine edge,
+        Func<AppConfig> configProvider)
     {
         _sapi = sapi ?? throw new ArgumentNullException(nameof(sapi));
         _piper = piper ?? throw new ArgumentNullException(nameof(piper));
+        _edge = edge ?? throw new ArgumentNullException(nameof(edge));
         _configProvider = configProvider ?? throw new ArgumentNullException(nameof(configProvider));
 
         _sapi.SpeakCompleted += () => ForwardCompleted(_sapi);
         _sapi.SpeakProgress += (position, count) => ForwardProgress(_sapi, position, count);
         _piper.SpeakCompleted += () => ForwardCompleted(_piper);
         _piper.SpeakProgress += (position, count) => ForwardProgress(_piper, position, count);
+        if (!ReferenceEquals(edge, piper))
+        {
+            _edge.SpeakCompleted += () => ForwardCompleted(_edge);
+            _edge.SpeakProgress += (position, count) => ForwardProgress(_edge, position, count);
+        }
     }
 
     public event Action? SpeakCompleted;
@@ -111,8 +129,13 @@ public sealed class SelectableSpeechEngine : ISpeechEngine
             try
             {
                 var engine = _configProvider()?.TtsEngine;
-                return string.Equals(engine, "sapi", StringComparison.OrdinalIgnoreCase)
-                    ? _sapi
+                if (string.Equals(engine, "sapi", StringComparison.OrdinalIgnoreCase))
+                {
+                    return _sapi;
+                }
+
+                return string.Equals(engine, "edge", StringComparison.OrdinalIgnoreCase)
+                    ? _edge
                     : _piper;
             }
             catch (Exception)
