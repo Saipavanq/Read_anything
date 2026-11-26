@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using ReadAloud.Models;
 using ReadAloud.Services;
@@ -27,6 +28,30 @@ public sealed class PiperEngineTests
     public void ParseVoiceList_EmptyAndMalformed_ReturnEmpty(string json)
     {
         Assert.Empty(PiperSpeechEngine.ParseVoiceList(json));
+    }
+
+    [Fact]
+    public void GetVoices_ReturnsModelsFromConfiguredFolder()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "readaloud-tests-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var model = Path.Combine(directory, "en_US-test-medium.onnx");
+            File.WriteAllText(model, "listing test placeholder");
+            var config = new AppConfig { PiperModelDir = directory };
+            var engine = new PiperSpeechEngine(() => config);
+
+            var voices = engine.GetVoices();
+
+            var voice = Assert.Single(voices);
+            Assert.Equal("en_US-test-medium", voice.Name);
+            Assert.Equal(model, voice.Description);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
     }
 
     [Fact]

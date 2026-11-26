@@ -305,6 +305,7 @@ public sealed class PiperSpeechEngine : ISpeechEngine
             RedirectStandardError = true,
             CreateNoWindow = true
         };
+        start.ArgumentList.Add(helper);
         foreach (var argument in arguments)
         {
             start.ArgumentList.Add(argument);
