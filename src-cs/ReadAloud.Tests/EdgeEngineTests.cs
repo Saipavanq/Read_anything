@@ -168,6 +168,25 @@ public sealed class EdgeEngineTests : IDisposable
     }
 
     [Fact]
+    public async Task EdgeEngine_TreatsEmptySynthesisAsFailureAndFallsBack()
+    {
+        var synthesizer = new FakeSynthesizer(_root) { CreateEmptyFile = true };
+        var player = new FakeAudioPlayer();
+        var fallback = new FakeFallbackEngine { CompleteOnSpeak = true };
+        var config = new AppConfig { EdgeVoicePriority = new List<string> { "v1" } };
+        var engine = new EdgeSpeechEngine(
+            () => config, synthesizer, player, fallback, OfflineCatalog());
+        var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        engine.SpeakCompleted += () => completed.TrySetResult();
+
+        engine.Speak("Empty file.", new VoiceOptions("Voice", 0, 100));
+
+        await completed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(1, fallback.SpeakCalls);
+        Assert.Equal(0, player.PlayCalls);
+    }
+
+    [Fact]
     public async Task EdgeEngine_PreviewVoiceTriedFirst()
     {
         var synthesizer = new FakeSynthesizer(_root);
@@ -358,6 +377,8 @@ public sealed class EdgeEngineTests : IDisposable
 
         public bool Fail { get; init; }
 
+        public bool CreateEmptyFile { get; init; }
+
         public HashSet<string> FailVoices { get; } = new(StringComparer.Ordinal);
 
         public List<string> Calls { get; } = new();
@@ -376,7 +397,7 @@ public sealed class EdgeEngineTests : IDisposable
             }
 
             var path = Path.Combine(_root, "synthesis-" + Calls.Count + ".mp3");
-            File.WriteAllText(path, "fake mp3");
+            File.WriteAllText(path, CreateEmptyFile ? string.Empty : "fake mp3");
             CreatedPaths.Add(path);
             return Task.FromResult(path);
         }

@@ -59,12 +59,23 @@ feature. Piper stays the default engine; Edge is an explicit opt-in choice.
 - No Python dependency for this feature. The old Python app's `edge_tts`
   installation is not part of the design.
 
+### Implementation update (2026-11-26)
+
+`EdgeTtsSharp` 2.0.7 was replaced by `edge-tts-net` 2.0.0. Microsoft began
+returning HTTP 403 to `EdgeTtsSharp`'s WebSocket handshake; the library then
+hung and left a locked 0-byte MP3, so the engine never reached Piper fallback.
+`SayIt` 1.0.7 also returned 403. `EdgeTTS.DotNet` handles the newer
+`Sec-MS-GEC` token but requires .NET 10, while this app targets .NET 8.
+`edge-tts-net` 2.0.0 completes against the current service under .NET 8.
+`EdgeSynthesizer` also enforces an 8-second per-voice timeout and rejects
+zero-byte output, so any future handshake failure fails fast and falls back.
+
 ## Approaches
 
 ### A. Pure C# Edge engine with a .NET Edge TTS library (chosen)
 
-Use `EdgeTtsSharp` (MIT, .NET Standard 2.0/2.1, compatible with .NET 8) for the
-Edge speech WebSocket synthesis, and `NAudio` for MP3 playback. Fetch the voice
+Use `edge-tts-net` 2.0.0 (.NET Standard 2.0, compatible with .NET 8) for Edge
+speech WebSocket synthesis, and `NAudio` for MP3 playback. Fetch the voice
 catalog in C# with `HttpClient` from Microsoft's public Edge voices endpoint,
 cache it locally, and expose it through `EdgeSpeechEngine.GetVoices()`.
 
@@ -115,7 +126,7 @@ fall back to the default.
   identical to callers.
 - `Speak`: a non-empty `options.VoiceId` (from Voice Library preview) is tried
   first; then each `config.EdgeVoicePriority` entry in order. For each candidate
-  it calls `EdgeTtsSharp` to save MP3 to a temp file and plays it with `NAudio`.
+  it calls `edge-tts-net` to save MP3 to a temp file and plays it with `NAudio`.
   The first successful voice wins; later candidates are not read.
 - If no candidate succeeds, it calls `fallback.Speak(text, options)` silently.
   This is how offline behavior becomes Piper without any UI error path.
@@ -172,7 +183,7 @@ fall back to the default.
 
 ## Parts left to the builder
 
-- Exact NuGet package versions and API calls for `EdgeTtsSharp` and `NAudio`
+- Exact NuGet package versions and API calls for `edge-tts-net` and `NAudio`
   that compile under .NET 8.
 - Exact Microsoft voices endpoint URL and token as used by current Edge clients;
   verify it responds before relying on it.

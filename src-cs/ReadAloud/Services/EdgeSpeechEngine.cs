@@ -183,7 +183,9 @@ public sealed class EdgeSpeechEngine : ISpeechEngine
                         var path = await _synthesizer
                             .SynthesizeAsync(text, voice, rate, token)
                             .ConfigureAwait(false);
-                        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+                        if (string.IsNullOrWhiteSpace(path)
+                            || !File.Exists(path)
+                            || new FileInfo(path).Length == 0)
                         {
                             DeleteTemp(path);
                             continue;

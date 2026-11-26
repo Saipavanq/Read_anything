@@ -4,9 +4,15 @@
 
 **Goal:** Add a pure-C# Microsoft Edge online speech engine with a user-editable ordered voice priority list and silent Piper fallback, while keeping Piper the default engine and the existing UI layout.
 
-**Architecture:** A new `EdgeSpeechEngine` sits beside SAPI and Piper behind `SelectableSpeechEngine`. It uses `EdgeTtsSharp` for online synthesis, NAudio for MP3 playback, and a cached Microsoft voice catalog for the Voice Library. Configuration and Settings gain an ordered `edge_voice_priority` list; when every online attempt fails, the engine silently delegates to Piper.
+**Architecture:** A new `EdgeSpeechEngine` sits beside SAPI and Piper behind `SelectableSpeechEngine`. It uses `edge-tts-net` 2.0.0 for online synthesis, NAudio for MP3 playback, and a cached Microsoft voice catalog for the Voice Library. Configuration and Settings gain an ordered `edge_voice_priority` list; when every online attempt fails, the engine silently delegates to Piper.
 
-**Tech Stack:** C# 12 / .NET 8 WPF (`net8.0-windows`), xUnit, `EdgeTtsSharp` 2.0.7, `NAudio` 2.2.1, `System.Net.Http`, single-file `win-x64` publish.
+**Tech Stack:** C# 12 / .NET 8 WPF (`net8.0-windows`), xUnit, `edge-tts-net` 2.0.0, `NAudio` 2.2.1, `System.Net.Http`, single-file `win-x64` publish.
+
+**Implementation update (2026-11-26):** The originally planned `EdgeTtsSharp`
+2.0.7 client now receives HTTP 403 from Microsoft and hangs on a 0-byte MP3, so
+it was replaced by `edge-tts-net` 2.0.0. `EdgeSynthesizer` also applies an
+8-second per-voice timeout and rejects empty files; `EdgeSpeechEngine` rejects
+empty files as a second guard and falls back to Piper.
 
 **Spec:** `docs/superpowers/specs/2026-11-26-csharp-edge-voice-design.md`
 
@@ -110,7 +116,7 @@ Expected: FAIL with missing types.
 
 - [ ] **Step 5: Add packages and implement synthesis/playback**
 
-Add `<PackageReference Include="EdgeTtsSharp" Version="2.0.7" />` and `<PackageReference Include="NAudio" Version="2.2.1" />` to `src-cs/ReadAloud/ReadAloud.csproj`. `EdgeSynthesizer` uses `EdgeTts.GetVoice(voice)` then `SaveAudioToFile(text, tempPath)`, applying `PlaybackSpeed` as Edge rate where supported. `NAudioPlayer` uses `AudioFileReader` + `WaveOutEvent`, honors volume, and stops/disposes safely.
+Add `<PackageReference Include="edge-tts-net" Version="2.0.0" />` and `<PackageReference Include="NAudio" Version="2.2.1" />` to `src-cs/ReadAloud/ReadAloud.csproj`. `EdgeSynthesizer` calls `edge_tts_net.EdgeTTSNet.Save(text, tempPath, option, token)` with the curated voice ID and a `%` rate, enforces an 8-second timeout, and rejects empty output. `NAudioPlayer` uses `AudioFileReader` + `WaveOutEvent`, honors volume, and stops/disposes safely.
 
 - [ ] **Step 6: Implement `EdgeSpeechEngine`**
 
