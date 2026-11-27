@@ -121,7 +121,7 @@ public partial class App : System.Windows.Application
             () => _config!.Load().MinimizeToTray,
             () => _config!.Load().RunInBackground);
         MainWindow = _window;
-        if (!startHidden)
+        if (StartupArguments.ShouldShowMainWindow(startHidden))
         {
             ShowMainWindow();
         }
@@ -217,7 +217,12 @@ public partial class App : System.Windows.Application
             _main,
             _startup,
             action => Dispatcher.Invoke(action));
-        var window = new SettingsWindow(viewModel) { Owner = _window };
+        var window = new SettingsWindow(viewModel);
+        if (_window is not null
+            && DialogOwnerPolicy.ShouldAssignOwner(new WindowInteropHelper(_window).Handle))
+        {
+            window.Owner = _window;
+        }
         if (window.ShowDialog() == true)
         {
             ApplyToggledPreferences();

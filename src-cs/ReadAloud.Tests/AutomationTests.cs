@@ -194,6 +194,22 @@ public sealed class AutomationTests
         Assert.Equal(expected, StartupArguments.ShouldStartHidden(args));
     }
 
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public void ShouldShowMainWindow_InvertsStartHidden(bool startHidden, bool expected)
+    {
+        Assert.Equal(expected, StartupArguments.ShouldShowMainWindow(startHidden));
+    }
+
+    [Theory]
+    [InlineData(0L, false)]
+    [InlineData(1L, true)]
+    public void DialogOwner_IsAssignedOnlyWhenMainWindowHasHandle(long mainWindowHandle, bool expected)
+    {
+        Assert.Equal(expected, DialogOwnerPolicy.ShouldAssignOwner((IntPtr)mainWindowHandle));
+    }
+
     [Fact]
     public void PrivacyDisclosure_ListsAutoReadAndHistory()
     {
