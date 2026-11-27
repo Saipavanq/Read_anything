@@ -365,7 +365,7 @@ Controls for deferred features are disabled with explanatory text, not hidden be
 
 ### Tray and close semantics
 
-Window X exits the app. `Hide to tray` hides the window. Tray menu contains Show window, Read selected text, Stop speaking, Settings…, and Quit. Voice/LLM entries are omitted until those features return. From Phase 4, Minimize to tray changes only the minimize button; X still exits.
+`Hide to tray` hides the window. With `run_in_background` enabled (the default), window X also hides the window and keeps the tray icon plus global hotkeys active; `tray → Quit` exits the app. Tray menu contains Show window, Read selected text, Stop speaking, Settings…, and Quit. Voice/LLM entries are omitted until those features return. From Phase 4, Minimize to tray changes only the minimize button; close-to-tray is controlled by `run_in_background`.
 
 ### Packaging
 
@@ -390,7 +390,7 @@ These are implementation decisions made by the author from prior user choices; t
 7. **History is off by default** because it stores user text locally.
 8. **Auto-read is off by default and uses mouse release as its trigger.** The opt-in hook observes only button-release events, then reuses `ClipboardFirst` capture; keyboard-only selection still uses the hotkey.
 9. **SAPI voices are labelled System.** Natural/AI labels wait for real non-SAPI voices.
-10. **Start with Windows and Minimize to tray are Phase 4 settings**, with X still exiting.
+10. **Start with Windows and Minimize to tray are Phase 4 settings**; `run_in_background` later makes X hide to tray while tray Quit exits.
 11. **Skip continues to the end.** Skipping selects a target sentence and then speaks the remaining text; it does not speak only that sentence.
 12. **History entries are written when a read is accepted for speech**, store the spoken/truncated text, and record measured duration with a `completed`/`stopped`/`interrupted` status. Replay creates a new entry.
 13. **`playback_speed` becomes authoritative in Phase 2.** `sapi_rate` is migrated once into it and kept only for compatibility.
@@ -425,8 +425,8 @@ These are implementation decisions made by the author from prior user choices; t
 
 ### Phase 4
 
-- `AutomationTests`: auto-read disabled by default and no hook installed; enabling installs the trigger; a fake mouse-up event calls capture once after debounce; events from Read Aloud windows are ignored; disabling removes the hook; Start with Windows writes/removes the HKCU Run value; Minimize to tray changes minimize only; X exits.
-- Manual smoke: enable auto-read in one app, drag-select text and confirm a read, confirm no read when disabled, confirm no read from Read Aloud’s own text input, toggle Start with Windows and verify registry entry, minimize to tray and quit from tray.
+- `AutomationTests`: auto-read disabled by default and no hook installed; enabling installs the trigger; a fake mouse-up event calls capture once after debounce; events from Read Aloud windows are ignored; disabling removes the hook; Start with Windows writes/removes the HKCU Run value, including `--hidden` while `run_in_background` is on; Minimize to tray changes minimize only; X hides to tray while `run_in_background` is on and exits when it is off.
+- Manual smoke: enable auto-read in one app, drag-select text and confirm a read, confirm no read when disabled, confirm no read from Read Aloud’s own text input, toggle Start with Windows and verify registry entry, minimize to tray, close with X and confirm hotkeys still work, then quit from tray.
 
 ## Risks and mitigations
 

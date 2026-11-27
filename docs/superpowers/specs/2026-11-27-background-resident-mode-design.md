@@ -1,7 +1,7 @@
 # Background resident mode design
 
 Date: 2026-11-27
-Status: Proposed
+Status: Accepted
 
 ## Problem
 

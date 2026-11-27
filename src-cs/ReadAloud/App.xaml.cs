@@ -45,8 +45,9 @@ public partial class App : System.Windows.Application
             Path.Combine(AppContext.BaseDirectory, "config", "settings.json"));
 
         var config = _config.Load();
+        var startHidden = StartupArguments.ShouldStartHidden(e.Args);
         _startup = new StartupService(new RegistryAccessor());
-        _startup.SetStartWithWindows(config.StartWithWindows);
+        _startup.SetStartWithWindows(config.StartWithWindows, config.RunInBackground);
         _themes = new ThemeService(Resources, new WindowsSystemThemeProvider());
         _themes.Apply(config.ColorMode, config.Theme);
 
@@ -120,7 +121,10 @@ public partial class App : System.Windows.Application
             () => _config!.Load().MinimizeToTray,
             () => _config!.Load().RunInBackground);
         MainWindow = _window;
-        _window.Show();
+        if (!startHidden)
+        {
+            ShowMainWindow();
+        }
 
         var foregroundPolicy = new OwnWindowForegroundPolicy(
             NativeMethods.GetForegroundWindow,

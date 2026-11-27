@@ -8,7 +8,7 @@ A small **Windows desktop application with a visible window**, similar in idea t
 2. Select text anywhere (browser, Word, PDF, etc.).
 3. Press **`Ctrl+Alt+R`**, or click **Read selected text** in the window — the text is read aloud.
 
-The window has buttons for reading, voice commands and stop, plus engine/mode/volume controls and an activity log. **Hide to tray** removes the window but keeps hotkeys working; the tray icon can restore it. Closing the window with **X** exits the app.
+The window has buttons for reading, voice commands and stop, plus engine/mode/volume controls and an activity log. **Hide to tray** removes the window but keeps hotkeys working; the tray icon can restore it. Closing the window hides the app to the tray when **Run in background** is enabled (the default); use **tray → Quit** to exit.
 
 > CopySpeech uses `Win+Shift+A` (and a double `Ctrl+C` trigger). This app uses **`Ctrl+Alt+R`** as you requested. All hotkeys are editable in Settings.
 

@@ -41,6 +41,7 @@ public sealed class SettingsViewModel : ObservableObject
     private int _historyRetentionDays = 30;
     private bool _autoReadSelection;
     private bool _startWithWindows;
+    private bool _runInBackground = true;
     private bool _minimizeToTray;
     private bool _clipboardRestore = true;
     private string _validationMessage = string.Empty;
@@ -86,6 +87,7 @@ public sealed class SettingsViewModel : ObservableObject
         _historyRetentionDays = current.HistoryRetentionDays;
         _autoReadSelection = current.AutoReadSelection;
         _startWithWindows = current.StartWithWindows;
+        _runInBackground = current.RunInBackground;
         _minimizeToTray = current.MinimizeToTray;
         _clipboardRestore = current.ClipboardRestore;
     }
@@ -300,6 +302,12 @@ public sealed class SettingsViewModel : ObservableObject
         set => SetProperty(ref _startWithWindows, value);
     }
 
+    public bool RunInBackground
+    {
+        get => _runInBackground;
+        set => SetProperty(ref _runInBackground, value);
+    }
+
     public bool MinimizeToTray
     {
         get => _minimizeToTray;
@@ -345,7 +353,7 @@ public sealed class SettingsViewModel : ObservableObject
         ValidationMessage = conflicts.Count == 0 ? "Settings saved." : string.Join(" ", conflicts);
     }
 
-    public void ApplyStartupSettings() => _startup?.SetStartWithWindows(StartWithWindows);
+    public void ApplyStartupSettings() => _startup?.SetStartWithWindows(StartWithWindows, RunInBackground);
 
     public void BeginRecording(string action)
     {
@@ -429,6 +437,7 @@ public sealed class SettingsViewModel : ObservableObject
         config.HistoryRetentionDays = HistoryRetentionDays;
         config.AutoReadSelection = AutoReadSelection;
         config.StartWithWindows = StartWithWindows;
+        config.RunInBackground = RunInBackground;
         config.MinimizeToTray = MinimizeToTray;
         config.ClipboardRestore = ClipboardRestore;
     }

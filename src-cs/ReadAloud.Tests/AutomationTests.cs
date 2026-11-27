@@ -166,6 +166,23 @@ public sealed class AutomationTests
         Assert.True(MainWindow.ShouldExitOnClose(runInBackground: false));
     }
 
+    [Fact]
+    public void BackgroundMode_SaveRewritesStartupValue()
+    {
+        using var h = new SettingsHarness();
+
+        Assert.True(h.ViewModel.RunInBackground);
+
+        h.ViewModel.StartWithWindows = true;
+        h.ViewModel.RunInBackground = false;
+        h.ViewModel.Save();
+        Assert.DoesNotContain("--hidden", h.Registry.Value!);
+
+        h.ViewModel.RunInBackground = true;
+        h.ViewModel.Save();
+        Assert.Contains("--hidden", h.Registry.Value!);
+    }
+
     [Theory]
     [InlineData(new[] { "--hidden" }, true)]
     [InlineData(new[] { "--HIDDEN" }, true)]
