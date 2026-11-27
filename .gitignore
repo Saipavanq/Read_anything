@@ -8,6 +8,7 @@ dist/
 *.spec
 .superpowers/brainstorm/
 .superpowers/sdd/2026-11-21-readaloud-csharp-rewrite/
+.superpowers/sdd/2026-11-27-background-resident-mode/
 src-cs/**/bin/
 src-cs/**/obj/
 dist-cs/

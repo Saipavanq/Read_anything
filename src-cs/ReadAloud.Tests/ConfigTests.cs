@@ -294,4 +294,24 @@ public sealed class ConfigTests : IDisposable
 
         Assert.Equal("en-US-JennyNeural", config.EdgeVoicePriority[0]);
     }
+
+    [Fact]
+    public void RunInBackground_DefaultsTrue_AndRoundTripsFalse()
+    {
+        Assert.True(new AppConfig().RunInBackground);
+        Assert.True(Service().Load().RunInBackground);
+
+        Write(AppDataPath, """{"run_in_background": false}""");
+        Assert.False(Service().Load().RunInBackground);
+
+        var service = Service();
+        var config = service.Load();
+        config.RunInBackground = false;
+        service.Save(config);
+
+        using var doc = JsonDocument.Parse(File.ReadAllText(AppDataPath));
+        Assert.False(doc.RootElement.GetProperty("run_in_background").GetBoolean());
+        var reloaded = new ConfigService(AppDataPath, LegacyPath).Load();
+        Assert.False(reloaded.RunInBackground);
+    }
 }

@@ -14,7 +14,7 @@ public sealed class ConfigService
         "capture_method", "offline_voice", "sapi_rate", "volume", "max_chars",
         "show_activity", "playback_speed", "auto_read_selection", "mini_player_enabled",
         "mini_player_always_on_top", "mini_player_auto_hide", "history_enabled",
-        "history_retention_days", "start_with_windows", "minimize_to_tray", "clipboard_restore",
+        "history_retention_days", "start_with_windows", "run_in_background", "minimize_to_tray", "clipboard_restore",
         "tts_engine", "edge_voice_priority", "edge_voice", "piper_python", "piper_model_dir",
         "piper_model", "piper_speaker", "piper_length_scale"
     };
@@ -94,6 +94,7 @@ public sealed class ConfigService
         writer.WriteBoolean("history_enabled", config.HistoryEnabled);
         writer.WriteNumber("history_retention_days", config.HistoryRetentionDays);
         writer.WriteBoolean("start_with_windows", config.StartWithWindows);
+        writer.WriteBoolean("run_in_background", config.RunInBackground);
         writer.WriteBoolean("minimize_to_tray", config.MinimizeToTray);
         writer.WriteBoolean("clipboard_restore", config.ClipboardRestore);
         writer.WriteString("tts_engine", config.TtsEngine);
@@ -165,6 +166,7 @@ public sealed class ConfigService
         config.HistoryEnabled = GetBool(root, "history_enabled", config.HistoryEnabled);
         config.HistoryRetentionDays = GetInt(root, "history_retention_days", config.HistoryRetentionDays);
         config.StartWithWindows = GetBool(root, "start_with_windows", config.StartWithWindows);
+        config.RunInBackground = GetBool(root, "run_in_background", config.RunInBackground);
         config.MinimizeToTray = GetBool(root, "minimize_to_tray", config.MinimizeToTray);
         config.ClipboardRestore = GetBool(root, "clipboard_restore", config.ClipboardRestore);
         config.TtsEngine = GetString(root, "tts_engine", config.TtsEngine);

@@ -24,6 +24,7 @@ public sealed class AppConfig
     public bool HistoryEnabled { get; set; }
     public int HistoryRetentionDays { get; set; } = 30;
     public bool StartWithWindows { get; set; }
+    public bool RunInBackground { get; set; } = true;
     public bool MinimizeToTray { get; set; }
     public bool ClipboardRestore { get; set; } = true;
     public string TtsEngine { get; set; } = "piper";
