@@ -134,6 +134,17 @@ public sealed class AutomationTests
         Assert.True(MainWindow.ShouldExitOnClose(minimizeToTray: true));
     }
 
+    [Theory]
+    [InlineData(new[] { "--hidden" }, true)]
+    [InlineData(new[] { "--HIDDEN" }, true)]
+    [InlineData(new[] { "other", "--hidden" }, true)]
+    [InlineData(new string[0], false)]
+    [InlineData(new[] { "--visible" }, false)]
+    public void ShouldStartHidden_RecognizesOnlyHiddenFlag(string[] args, bool expected)
+    {
+        Assert.Equal(expected, StartupArguments.ShouldStartHidden(args));
+    }
+
     [Fact]
     public void PrivacyDisclosure_ListsAutoReadAndHistory()
     {
