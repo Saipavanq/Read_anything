@@ -23,6 +23,13 @@ public sealed class SettingsViewModel : ObservableObject
     private CaptureMethod _captureMethod = CaptureMethod.ClipboardFirst;
     private string _offlineVoice = string.Empty;
     private int _sapiRate;
+    private string _ttsEngine = "piper";
+    private string _edgeVoicePriorityText = string.Empty;
+    private string _piperPython = string.Empty;
+    private string _piperModelDir = string.Empty;
+    private string _piperModel = string.Empty;
+    private int _piperSpeaker;
+    private double _piperLengthScale = 1.0;
     private int _volume = 100;
     private int _maxChars = 4000;
     private bool _showActivity = true;
@@ -61,6 +68,13 @@ public sealed class SettingsViewModel : ObservableObject
         _captureMethod = current.CaptureMethod;
         _offlineVoice = current.OfflineVoice;
         _sapiRate = current.SapiRate;
+        _ttsEngine = current.TtsEngine;
+        _edgeVoicePriorityText = string.Join(", ", current.EdgeVoicePriority);
+        _piperPython = current.PiperPython;
+        _piperModelDir = current.PiperModelDir;
+        _piperModel = current.PiperModel;
+        _piperSpeaker = current.PiperSpeaker;
+        _piperLengthScale = current.PiperLengthScale;
         _volume = current.Volume;
         _maxChars = current.MaxChars;
         _showActivity = current.ShowActivity;
@@ -174,6 +188,50 @@ public sealed class SettingsViewModel : ObservableObject
     {
         get => _sapiRate;
         set => SetProperty(ref _sapiRate, value);
+    }
+
+    public IReadOnlyList<string> SpeechEngines { get; } = new[] { "sapi", "piper", "edge" };
+
+    public string TtsEngine
+    {
+        get => _ttsEngine;
+        set => SetProperty(ref _ttsEngine, value);
+    }
+
+    public string EdgeVoicePriorityText
+    {
+        get => _edgeVoicePriorityText;
+        set => SetProperty(ref _edgeVoicePriorityText, value);
+    }
+
+    public string PiperPython
+    {
+        get => _piperPython;
+        set => SetProperty(ref _piperPython, value);
+    }
+
+    public string PiperModelDir
+    {
+        get => _piperModelDir;
+        set => SetProperty(ref _piperModelDir, value);
+    }
+
+    public string PiperModel
+    {
+        get => _piperModel;
+        set => SetProperty(ref _piperModel, value);
+    }
+
+    public int PiperSpeaker
+    {
+        get => _piperSpeaker;
+        set => SetProperty(ref _piperSpeaker, value);
+    }
+
+    public double PiperLengthScale
+    {
+        get => _piperLengthScale;
+        set => SetProperty(ref _piperLengthScale, value);
     }
 
     public int Volume
@@ -352,6 +410,14 @@ public sealed class SettingsViewModel : ObservableObject
         config.CaptureMethod = CaptureMethod;
         config.OfflineVoice = OfflineVoice;
         config.SapiRate = SapiRate;
+        config.TtsEngine = TtsEngine;
+        config.EdgeVoicePriority = new List<string>(
+            EdgeVoicePriorityText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        config.PiperPython = PiperPython;
+        config.PiperModelDir = PiperModelDir;
+        config.PiperModel = PiperModel;
+        config.PiperSpeaker = PiperSpeaker;
+        config.PiperLengthScale = PiperLengthScale;
         config.Volume = Volume;
         config.MaxChars = MaxChars;
         config.ShowActivity = ShowActivity;

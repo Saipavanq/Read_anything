@@ -109,7 +109,17 @@ public sealed class HomeViewModel : ObservableObject
             }
 
             var config = _configProvider();
-            config.OfflineVoice = value;
+            if (string.Equals(config.TtsEngine, "edge", StringComparison.OrdinalIgnoreCase))
+            {
+                config.EdgeVoicePriority.RemoveAll(voice =>
+                    string.Equals(voice, value, StringComparison.Ordinal));
+                config.EdgeVoicePriority.Insert(0, value);
+            }
+            else
+            {
+                config.OfflineVoice = value;
+            }
+
             _saveConfig?.Invoke(config);
             _log.Add($"Voice changed to {value}.");
         }
@@ -149,10 +159,26 @@ public sealed class HomeViewModel : ObservableObject
     public void Refresh()
     {
         var config = _configProvider();
-        Voices = _speech is null
-            ? Array.Empty<string>()
-            : _speech.GetVoices().Select(voice => voice.Name).ToArray();
-        SetProperty(ref _selectedVoice, config.OfflineVoice, nameof(SelectedVoice));
+        var available = _speech?.GetVoices() ?? Array.Empty<VoiceInfo>();
+        if (string.Equals(config.TtsEngine, "edge", StringComparison.OrdinalIgnoreCase))
+        {
+            // Only the five Edge voices are selectable here; Piper stays in the
+            // Voice Library for local audition and automatic offline fallback.
+            Voices = available
+                .Where(voice => EdgeVoiceCatalog.IsCuratedVoice(voice.Name))
+                .Select(voice => voice.Name)
+                .ToArray();
+            var preferred = config.EdgeVoicePriority?.FirstOrDefault(voice => EdgeVoiceCatalog.IsCuratedVoice(voice))
+                ?? Voices.FirstOrDefault()
+                ?? string.Empty;
+            SetProperty(ref _selectedVoice, preferred, nameof(SelectedVoice));
+        }
+        else
+        {
+            Voices = available.Select(voice => voice.Name).ToArray();
+            SetProperty(ref _selectedVoice, config.OfflineVoice, nameof(SelectedVoice));
+        }
+
         _captureMethod = config.CaptureMethod;
         RaisePropertyChanged(nameof(SelectedCaptureMethod));
         ShowActivity = config.ShowActivity;

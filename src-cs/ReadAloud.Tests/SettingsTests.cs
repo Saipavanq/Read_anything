@@ -109,6 +109,85 @@ public sealed class SettingsTests : IDisposable
         Assert.False(h.ViewModel.IsVoiceCommandEditable);
     }
 
+    [Fact]
+    public void PiperSettings_LoadIntoViewModel()
+    {
+        var appData = Path.Combine(_root, "appdata");
+        Directory.CreateDirectory(appData);
+        File.WriteAllText(Path.Combine(appData, "settings.json"), """
+            {
+              "tts_engine": "sapi",
+              "piper_python": "C:\\tools\\python.exe",
+              "piper_model_dir": "C:\\voices",
+              "piper_model": "en_US-test-medium.onnx",
+              "piper_speaker": 7,
+              "piper_length_scale": 1.25
+            }
+            """);
+
+        var h = new Harness(_root);
+
+        Assert.Equal("sapi", h.ViewModel.TtsEngine);
+        Assert.Equal(@"C:\tools\python.exe", h.ViewModel.PiperPython);
+        Assert.Equal(@"C:\voices", h.ViewModel.PiperModelDir);
+        Assert.Equal("en_US-test-medium.onnx", h.ViewModel.PiperModel);
+        Assert.Equal(7, h.ViewModel.PiperSpeaker);
+        Assert.Equal(1.25, h.ViewModel.PiperLengthScale);
+        Assert.Equal(new[] { "sapi", "piper", "edge" }, h.ViewModel.SpeechEngines);
+    }
+
+    [Fact]
+    public void PiperSettings_SaveBackToConfig()
+    {
+        var h = new Harness(_root);
+
+        h.ViewModel.TtsEngine = "sapi";
+        h.ViewModel.PiperPython = @"C:\venv\python.exe";
+        h.ViewModel.PiperModelDir = @"C:\models";
+        h.ViewModel.PiperModel = "en_US-amy-medium.onnx";
+        h.ViewModel.PiperSpeaker = 9;
+        h.ViewModel.PiperLengthScale = 0.75;
+        h.ViewModel.Save();
+
+        var saved = h.Config.Load();
+        Assert.Equal("sapi", saved.TtsEngine);
+        Assert.Equal(@"C:\venv\python.exe", saved.PiperPython);
+        Assert.Equal(@"C:\models", saved.PiperModelDir);
+        Assert.Equal("en_US-amy-medium.onnx", saved.PiperModel);
+        Assert.Equal(9, saved.PiperSpeaker);
+        Assert.Equal(0.75, saved.PiperLengthScale);
+    }
+
+    [Fact]
+    public void EdgePriority_LoadIntoViewModel()
+    {
+        var appData = Path.Combine(_root, "appdata");
+        Directory.CreateDirectory(appData);
+        File.WriteAllText(Path.Combine(appData, "settings.json"), """
+            {
+              "tts_engine": "edge",
+              "edge_voice_priority": ["en-US-AriaNeural", "en-US-JennyNeural"]
+            }
+            """);
+
+        var h = new Harness(_root);
+
+        Assert.Equal("edge", h.ViewModel.TtsEngine);
+        Assert.Equal("en-US-AriaNeural, en-US-JennyNeural", h.ViewModel.EdgeVoicePriorityText);
+        Assert.Equal(new[] { "sapi", "piper", "edge" }, h.ViewModel.SpeechEngines);
+    }
+
+    [Fact]
+    public void EdgePriority_SaveBackToConfig()
+    {
+        var h = new Harness(_root);
+
+        h.ViewModel.EdgeVoicePriorityText = " en-US-AriaNeural , , en-US-JennyNeural ";
+        h.ViewModel.Save();
+
+        Assert.Equal(new[] { "en-US-AriaNeural", "en-US-JennyNeural" }, h.Config.Load().EdgeVoicePriority);
+    }
+
     private sealed class Harness
     {
         public Harness(string root)

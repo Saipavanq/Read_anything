@@ -83,6 +83,56 @@ public sealed class SpeechTests
         Assert.Equal("David", synth.SelectedVoice);
     }
 
+    [Fact]
+    public void SelectableEngine_DefaultConfigUsesPiper()
+    {
+        var sapi = new FakeSpeechEngine();
+        var piper = new FakeSpeechEngine();
+        var config = new AppConfig();
+        var engine = new SelectableSpeechEngine(sapi, piper, () => config);
+
+        engine.Speak("Piper default text", new VoiceOptions("voice", 0, 100));
+
+        Assert.Equal(1, piper.SpeakCalls);
+        Assert.Equal("Piper default text", piper.LastText);
+        Assert.Equal(0, sapi.SpeakCalls);
+        Assert.Null(sapi.LastText);
+    }
+
+    [Fact]
+    public void SelectableEngine_RoutesEdge()
+    {
+        var sapi = new FakeSpeechEngine();
+        var piper = new FakeSpeechEngine();
+        var edge = new FakeSpeechEngine();
+        var config = new AppConfig { TtsEngine = "edge" };
+        var engine = new SelectableSpeechEngine(sapi, piper, edge, () => config);
+        var options = new VoiceOptions("voice", 0, 100);
+        var completed = 0;
+        var progress = new List<(int Position, int Count)>();
+        engine.SpeakCompleted += () => completed++;
+        engine.SpeakProgress += (position, count) => progress.Add((position, count));
+
+        engine.Speak("Edge text", options);
+        edge.EmitProgress(4, 10);
+        edge.EmitCompleted();
+        piper.EmitCompleted();
+        sapi.EmitCompleted();
+        engine.Stop();
+
+        Assert.Equal(1, edge.SpeakCalls);
+        Assert.Equal("Edge text", edge.LastText);
+        Assert.Equal(0, sapi.SpeakCalls);
+        Assert.Null(sapi.LastText);
+        Assert.Equal(0, piper.SpeakCalls);
+        Assert.Null(piper.LastText);
+        Assert.Equal(1, completed);
+        Assert.Equal((4, 10), Assert.Single(progress));
+        Assert.Equal(1, edge.StopCalls);
+        Assert.Equal(0, sapi.StopCalls);
+        Assert.Equal(0, piper.StopCalls);
+    }
+
     private static FakeSynthesizer DefaultSynth()
     {
         var synth = new FakeSynthesizer();
@@ -129,5 +179,39 @@ public sealed class SpeechTests
         }
 
         public IReadOnlyList<SyntheticVoiceDescriptor> GetVoices() => Voices;
+    }
+
+    private sealed class FakeSpeechEngine : ISpeechEngine
+    {
+        public event Action? SpeakCompleted;
+
+        public event Action<int, int>? SpeakProgress;
+
+        public bool IsSpeaking { get; private set; }
+
+        public string? LastText { get; private set; }
+
+        public int SpeakCalls { get; private set; }
+
+        public int StopCalls { get; private set; }
+
+        public IReadOnlyList<VoiceInfo> GetVoices() => Array.Empty<VoiceInfo>();
+
+        public void Speak(string text, VoiceOptions options)
+        {
+            SpeakCalls++;
+            LastText = text;
+            IsSpeaking = true;
+        }
+
+        public void Stop()
+        {
+            StopCalls++;
+            IsSpeaking = false;
+        }
+
+        public void EmitCompleted() => SpeakCompleted?.Invoke();
+
+        public void EmitProgress(int position, int count) => SpeakProgress?.Invoke(position, count);
     }
 }

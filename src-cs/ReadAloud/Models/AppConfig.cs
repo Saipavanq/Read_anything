@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace ReadAloud.Models;
 
 public sealed class AppConfig
@@ -24,4 +26,15 @@ public sealed class AppConfig
     public bool StartWithWindows { get; set; }
     public bool MinimizeToTray { get; set; }
     public bool ClipboardRestore { get; set; } = true;
+    public string TtsEngine { get; set; } = "piper";
+    public List<string> EdgeVoicePriority { get; set; } = new()
+    {
+        "en-US-AriaNeural", "en-US-JennyNeural", "en-GB-SoniaNeural",
+        "en-US-GuyNeural", "en-US-ChristopherNeural"
+    };
+    public string PiperPython { get; set; } = "";
+    public string PiperModelDir { get; set; } = "";
+    public string PiperModel { get; set; } = "";
+    public int PiperSpeaker { get; set; }
+    public double PiperLengthScale { get; set; } = 1.0;
 }

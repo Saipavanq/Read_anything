@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using ReadAloud.Models;
@@ -186,5 +187,111 @@ public sealed class ConfigTests : IDisposable
 
         using var doc = JsonDocument.Parse(File.ReadAllText(AppDataPath));
         Assert.Equal("dark", doc.RootElement.GetProperty("color_mode").GetString());
+    }
+
+    [Fact]
+    public void PiperDefaults_AreApplied()
+    {
+        var config = new AppConfig();
+
+        Assert.Equal("piper", config.TtsEngine);
+        Assert.Equal("", config.PiperPython);
+        Assert.Equal("", config.PiperModelDir);
+        Assert.Equal("", config.PiperModel);
+        Assert.Equal(0, config.PiperSpeaker);
+        Assert.Equal(1.0, config.PiperLengthScale, 3);
+    }
+
+    [Fact]
+    public void PiperKeys_RoundTripThroughConfigService()
+    {
+        var service = Service();
+        var config = service.Load();
+        config.TtsEngine = "sapi";
+        config.PiperPython = "C:\\venv\\Scripts\\python.exe";
+        config.PiperModelDir = "C:\\models";
+        config.PiperModel = "en_US-amy-medium.onnx";
+        config.PiperSpeaker = 3;
+        config.PiperLengthScale = 1.25;
+
+        service.Save(config);
+
+        var reloaded = new ConfigService(AppDataPath, LegacyPath).Load();
+        Assert.Equal("sapi", reloaded.TtsEngine);
+        Assert.Equal("C:\\venv\\Scripts\\python.exe", reloaded.PiperPython);
+        Assert.Equal("C:\\models", reloaded.PiperModelDir);
+        Assert.Equal("en_US-amy-medium.onnx", reloaded.PiperModel);
+        Assert.Equal(3, reloaded.PiperSpeaker);
+        Assert.Equal(1.25, reloaded.PiperLengthScale, 3);
+    }
+
+    [Fact]
+    public void UnknownPythonKeys_SurviveCSharpSave()
+    {
+        Write(LegacyPath, """
+        {
+          "tts_engine": "piper",
+          "whisper_model": "base.en"
+        }
+        """);
+
+        var service = Service();
+        service.Save(service.Load());
+
+        using var doc = JsonDocument.Parse(File.ReadAllText(AppDataPath));
+        Assert.Equal("piper", doc.RootElement.GetProperty("tts_engine").GetString());
+        Assert.Equal("base.en", doc.RootElement.GetProperty("whisper_model").GetString());
+    }
+
+    [Fact]
+    public void BadPiperNumbers_AreClamped()
+    {
+        Write(AppDataPath, """
+        {
+          "tts_engine": "bogus",
+          "piper_speaker": -5,
+          "piper_length_scale": 99
+        }
+        """);
+
+        var config = Service().Load();
+
+        Assert.Equal("piper", config.TtsEngine);
+        Assert.Equal(0, config.PiperSpeaker);
+        Assert.Equal(10, config.PiperLengthScale, 3);
+    }
+
+    [Fact]
+    public void EdgePriority_DefaultAndRoundTrip()
+    {
+        var config = new AppConfig();
+        Assert.Equal(
+            new[]
+            {
+                "en-US-AriaNeural", "en-US-JennyNeural", "en-GB-SoniaNeural",
+                "en-US-GuyNeural", "en-US-ChristopherNeural"
+            },
+            config.EdgeVoicePriority);
+
+        config.EdgeVoicePriority = new List<string> { "en-US-GuyNeural", "en-US-AriaNeural" };
+        var service = Service();
+        service.Save(config);
+
+        var reloaded = new ConfigService(AppDataPath, LegacyPath).Load();
+        Assert.Equal(new[] { "en-US-GuyNeural", "en-US-AriaNeural" }, reloaded.EdgeVoicePriority);
+
+        using var doc = JsonDocument.Parse(File.ReadAllText(AppDataPath));
+        Assert.Equal(JsonValueKind.Array, doc.RootElement.GetProperty("edge_voice_priority").ValueKind);
+        Assert.Equal("en-US-GuyNeural", doc.RootElement.GetProperty("edge_voice").GetString());
+    }
+
+    [Fact]
+    public void EdgePriority_LegacyVoiceSeedsList()
+    {
+        Write(AppDataPath, """{"edge_voice": "en-US-JennyNeural"}""");
+
+        var config = Service().Load();
+
+        Assert.Equal("en-US-JennyNeural", config.EdgeVoicePriority[0]);
     }
 }
