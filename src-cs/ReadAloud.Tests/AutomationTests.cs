@@ -102,15 +102,41 @@ public sealed class AutomationTests
     }
 
     [Fact]
-    public void StartWithWindows_WritesRunValue()
+    public void StartWithWindows_Background_WritesHiddenRunValue()
     {
         var registry = new FakeRegistryAccessor();
         var startup = new StartupService(registry);
 
-        startup.SetStartWithWindows(true);
+        startup.SetStartWithWindows(true, runInBackground: true);
 
-        Assert.False(string.IsNullOrWhiteSpace(registry.Value));
+        Assert.Contains("--hidden", registry.Value);
         Assert.True(startup.IsStartWithWindowsEnabled);
+    }
+
+    [Fact]
+    public void StartWithWindows_NoBackground_WritesPlainRunValue()
+    {
+        var registry = new FakeRegistryAccessor();
+        var startup = new StartupService(registry);
+
+        startup.SetStartWithWindows(true, runInBackground: false);
+
+        Assert.DoesNotContain("--hidden", registry.Value!);
+        Assert.True(startup.IsStartWithWindowsEnabled);
+    }
+
+    [Fact]
+    public void BackgroundToggle_RewritesExistingRunValue()
+    {
+        var registry = new FakeRegistryAccessor();
+        var startup = new StartupService(registry);
+        startup.SetStartWithWindows(true, runInBackground: false);
+
+        startup.SetStartWithWindows(true, runInBackground: true);
+        Assert.Contains("--hidden", registry.Value);
+
+        startup.SetStartWithWindows(true, runInBackground: false);
+        Assert.DoesNotContain("--hidden", registry.Value!);
     }
 
     [Fact]

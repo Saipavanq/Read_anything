@@ -14,13 +14,20 @@ public sealed class StartupService
     }
 
     public bool IsStartWithWindowsEnabled
-        => string.Equals(_registry.GetValue(RunValueName), RunCommand, StringComparison.OrdinalIgnoreCase);
+    {
+        get
+        {
+            var value = _registry.GetValue(RunValueName);
+            return string.Equals(value, RunCommand(false), StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, RunCommand(true), StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
-    public void SetStartWithWindows(bool enabled)
+    public void SetStartWithWindows(bool enabled, bool runInBackground = false)
     {
         if (enabled)
         {
-            _registry.SetValue(RunValueName, RunCommand);
+            _registry.SetValue(RunValueName, RunCommand(runInBackground));
         }
         else
         {
@@ -28,12 +35,10 @@ public sealed class StartupService
         }
     }
 
-    private static string RunCommand
+    private static string RunCommand(bool runInBackground)
     {
-        get
-        {
-            var executable = Environment.ProcessPath;
-            return string.IsNullOrWhiteSpace(executable) ? "ReadAloud.exe" : $"\"{executable}\"";
-        }
+        var executable = Environment.ProcessPath;
+        var quoted = string.IsNullOrWhiteSpace(executable) ? "ReadAloud.exe" : $"\"{executable}\"";
+        return runInBackground ? $"{quoted} --hidden" : quoted;
     }
 }
