@@ -117,7 +117,8 @@ public partial class App : System.Windows.Application
         _window = new MainWindow(
             _main,
             OpenSettings,
-            () => _config!.Load().MinimizeToTray);
+            () => _config!.Load().MinimizeToTray,
+            () => _config!.Load().RunInBackground);
         MainWindow = _window;
         _window.Show();
 

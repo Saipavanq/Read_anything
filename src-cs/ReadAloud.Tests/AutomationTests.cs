@@ -157,7 +157,13 @@ public sealed class AutomationTests
     {
         Assert.True(MainWindow.ShouldHideOnMinimize(WindowState.Minimized, minimizeToTray: true));
         Assert.False(MainWindow.ShouldHideOnMinimize(WindowState.Normal, minimizeToTray: true));
-        Assert.True(MainWindow.ShouldExitOnClose(minimizeToTray: true));
+    }
+
+    [Fact]
+    public void RunInBackground_ChangesCloseOnly()
+    {
+        Assert.False(MainWindow.ShouldExitOnClose(runInBackground: true));
+        Assert.True(MainWindow.ShouldExitOnClose(runInBackground: false));
     }
 
     [Theory]
